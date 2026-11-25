@@ -3,9 +3,9 @@
 - **Live CloudFront Studio**: https://d2nwlnexa95bs5.cloudfront.net
 - **Live `/api/health` Endpoint**: https://d2nwlnexa95bs5.cloudfront.net/api/health
 - **GitHub Repository**: https://github.com/ritwikareddykancharla/iot-core-registry
-- **AWS Architecture**: Amazon CloudFront (`E160AT0IBFD72Z`) + Private S3 (`s3://iotcoreplane-web-796330847946-us-west-2`, OAC) + AWS Lambda (`iotcoreplane-api-origin`, `python3.12`) + SQLite WAL + Amazon Bedrock (`us.amazon.nova-lite-v1:0`)
+- **AWS Architecture**: Amazon CloudFront (`E160AT0IBFD72Z`) + Private S3 (`s3://iotcoreplane-web-796330847946-us-west-2`, OAC) + AWS Lambda (`iotcoreplane-api-origin`, serverless) + SQLite WAL + Amazon Bedrock (`us.amazon.nova-lite-v1:0`)
 
-IoTCorePlane is a serverless IoT Core Identity, Registry, and Device Shadow control plane built in Python 3.12. It implements NIST P-256 ECDSA X.509v3 certificate provisioning (`JITP` and `Provision-by-Claim`), overlapping zero-downtime certificate rotation, runtime `${iot:Connection.Thing.ThingName}` MQTT topic isolation, incremental inverted-index Dynamic Thing Groups, and optimistic-concurrency (`version` CAS) Device Shadow reconciliation paired with Amazon Bedrock.
+IoTCorePlane is a serverless IoT Core Identity, Registry, and Device Shadow control plane deployed on AWS Lambda. It implements NIST P-256 ECDSA X.509v3 certificate provisioning (`JITP` and `Provision-by-Claim`), overlapping zero-downtime certificate rotation, runtime `${iot:Connection.Thing.ThingName}` MQTT topic isolation, incremental inverted-index Dynamic Thing Groups, and optimistic-concurrency (`version` CAS) Device Shadow reconciliation paired with Amazon Bedrock.
 
 ![IoTCorePlane System Architecture](docs/architecture.svg)
 
