@@ -1,0 +1,2634 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IoTCorePlane: Secure Device Identity, Fleet Search, and State Sync for Connected Hardware</title>
+  <meta name="description" content="IoTCorePlane provisions X.509 hardware identities via JITP and Claim certificates, rotates leaf credentials with zero dropped sessions, isolates MQTT topics per Thing, indexes Dynamic Thing Groups, and reconciles versioned Device Shadows with Amazon Bedrock." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&amp;family=Martian+Mono:wght@400;500;600;700&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&amp;family=Schibsted+Grotesk:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-paper: #FAF7F2;
+      --bg-card: #FFFFFF;
+      --bg-subtle: #F2ECE1;
+      --bg-obsidian: #141413;
+      --bg-code: #121417;
+      --text-code: #F4F4F5;
+      --ink: #141413;
+      --ink-muted: #52514E;
+      --border: #18181B;
+      --shadow: 4px 4px 0px #18181B;
+      --shadow-sm: 2px 2px 0px #18181B;
+      --dot-color: rgba(24, 24, 27, 0.13);
+      --accent-main: #047857;
+      --accent-ink: #FFFFFF;
+      --accent-soft: #D1FAE5;
+      --accent-deep: #064E3B;
+      --blue: #1D4ED8;
+      --blue-soft: #DBEAFE;
+      --pass: #059669;
+      --pass-soft: #D1FAE5;
+      --fail: #DC2626;
+      --fail-soft: #FEE2E2;
+      --warn: #D97706;
+      --warn-soft: #FEF3C7;
+      --purple: #6D28D9;
+      --purple-soft: #EDE9FE;
+    }
+
+    [data-theme="dark"] {
+      --bg-paper: #0E1113;
+      --bg-card: #161A1E;
+      --bg-subtle: #1F252B;
+      --bg-obsidian: #090B0C;
+      --bg-code: #090B0D;
+      --text-code: #E4E4E7;
+      --ink: #F4F4F5;
+      --ink-muted: #A1A1AA;
+      --border: #52525B;
+      --shadow: 4px 4px 0px #000000;
+      --shadow-sm: 2px 2px 0px #000000;
+      --dot-color: rgba(255, 255, 255, 0.08);
+      --accent-main: #059669;
+      --accent-ink: #FFFFFF;
+      --accent-soft: #064E3B;
+      --accent-deep: #6EE7B7;
+      --blue: #60A5FA;
+      --blue-soft: #1E293B;
+      --pass: #34D399;
+      --pass-soft: #064E3B;
+      --fail: #F87171;
+      --fail-soft: #450A0A;
+      --warn: #FBBF24;
+      --warn-soft: #451A03;
+      --purple: #C4B5FD;
+      --purple-soft: #2E1065;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Schibsted Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-paper);
+      background-image: radial-gradient(var(--dot-color) 1.25px, transparent 1.25px);
+      background-size: 20px 20px;
+      color: var(--ink);
+      line-height: 1.68;
+      padding-bottom: 4.5rem;
+    }
+
+    .serif { font-family: 'Newsreader', Georgia, serif; }
+    .mono { font-family: 'Martian Mono', monospace; }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 1.6rem;
+    }
+
+    /* Sticky Topbar + Sticky Scroll-Spy Section TOC */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 120;
+      background: var(--bg-paper);
+      border-bottom: 2px solid var(--border);
+      padding: 0.78rem 0;
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+    }
+
+    .toc-bar {
+      position: sticky;
+      top: 59px;
+      z-index: 110;
+      background: var(--bg-subtle);
+      border-bottom: 2px solid var(--border);
+      padding: 0.52rem 0;
+    }
+
+    .toc-inner {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.72rem;
+    }
+
+    .toc-link {
+      color: var(--ink);
+      text-decoration: none;
+      font-weight: 700;
+      padding: 0.24rem 0.62rem;
+      border: 1.5px solid var(--border);
+      background: var(--bg-card);
+      transition: background 0.12s ease, transform 0.08s ease;
+    }
+
+    .toc-link:hover {
+      background: var(--accent-soft);
+      transform: translate(-1px, -1px);
+    }
+
+    .toc-link.active {
+      background: var(--accent-main);
+      color: var(--accent-ink);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      font-weight: 800;
+      font-size: 1.16rem;
+      letter-spacing: -0.02em;
+      text-decoration: none;
+      color: var(--ink);
+    }
+
+    .brand-badge {
+      background: var(--accent-main);
+      color: var(--accent-ink);
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.72rem;
+      padding: 0.22rem 0.58rem;
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn, .nav-pill {
+      font-family: 'Schibsted Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 0.84rem;
+      padding: 0.5rem 0.92rem;
+      border: 2px solid var(--border);
+      background: var(--bg-card);
+      color: var(--ink);
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.12s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn:hover, .nav-pill:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: var(--shadow);
+    }
+
+    .btn:active, .nav-pill:active {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0px var(--border);
+    }
+
+    .btn:disabled {
+      opacity: 0.58;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-accent { background: var(--accent-main); color: var(--accent-ink); }
+    .btn-obsidian { background: #18181B; color: #FAF7F2; }
+    [data-theme="dark"] .btn-obsidian { background: var(--accent-main); color: #FFFFFF; }
+    .btn-secondary { background: var(--bg-subtle); }
+    .btn-danger { background: var(--fail-soft); color: var(--fail); }
+
+    /* Hero */
+    .hero {
+      padding: 2.6rem 0 2.3rem;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .hero-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.05rem;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.3rem 0.7rem;
+      background: var(--accent-main);
+      color: var(--accent-ink);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .runtime-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.3rem 0.7rem;
+      background: var(--bg-card);
+      color: var(--ink);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--pass);
+      display: inline-block;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 3.6vw, 2.85rem);
+      font-weight: 800;
+      line-height: 1.13;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.95rem;
+      max-width: 1040px;
+    }
+
+    .hero-sub {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: clamp(1.15rem, 1.85vw, 1.34rem);
+      line-height: 1.64;
+      color: var(--ink-muted);
+      max-width: 1020px;
+      margin-bottom: 1.35rem;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.68rem;
+      margin-bottom: 1.45rem;
+    }
+
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.1rem;
+      margin-top: 1.1rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+    }
+
+    .kpi-card {
+      padding: 1.15rem 1.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background: var(--accent-main);
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .kpi-val {
+      font-family: 'Martian Mono', monospace;
+      font-size: 1.36rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-top: 0.25rem;
+    }
+
+    .kpi-label { font-size: 0.88rem; font-weight: 800; color: var(--ink); margin-top: 0.24rem; }
+    .kpi-sub { font-size: 0.8rem; color: var(--ink-muted); margin-top: 0.28rem; line-height: 1.5; }
+
+    .pipeline-bar {
+      margin-top: 1.45rem;
+      background: var(--bg-obsidian);
+      color: #FAF7F2;
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 0.95rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+    }
+
+    .pipe-step { display: flex; align-items: center; gap: 0.5rem; font-size: 0.84rem; font-weight: 600; }
+    .pipe-num {
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: var(--accent-main);
+      color: #FFFFFF;
+      padding: 0.14rem 0.44rem;
+      border: 1.5px solid #FFFFFF;
+    }
+    .pipe-arrow { color: #6EE7B7; font-family: 'Martian Mono', monospace; font-weight: 700; }
+
+    /* Sections */
+    .section {
+      padding: 2.8rem 0 2.5rem;
+      border-bottom: 2px solid var(--border);
+      scroll-margin-top: 114px;
+    }
+
+    .section-kicker {
+      display: inline-block;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--accent-main);
+      margin-bottom: 0.35rem;
+    }
+    [data-theme="dark"] .section-kicker { color: #6EE7B7; }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1.1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.45rem;
+    }
+
+    .section-title {
+      font-size: 1.62rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .section-desc {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 1.15rem;
+      line-height: 1.62;
+      color: var(--ink-muted);
+      max-width: 900px;
+      margin-top: 0.32rem;
+    }
+
+    .overview-callout {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-left: 7px solid var(--accent-main);
+      box-shadow: var(--shadow);
+      padding: 1.35rem 1.5rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.96rem;
+      line-height: 1.72;
+    }
+
+    .overview-callout h3 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-bottom: 0.45rem;
+    }
+
+    .scenario-card {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 1.45rem 1.55rem;
+      margin-top: 1.5rem;
+    }
+
+    .scenario-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 980px) { .scenario-steps { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 580px) { .scenario-steps { grid-template-columns: 1fr; } }
+
+    .scenario-step {
+      background: var(--bg-subtle);
+      border: 1.5px solid var(--border);
+      padding: 1rem 1.05rem;
+      font-size: 0.88rem;
+      line-height: 1.65;
+    }
+
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.05rem;
+      margin-bottom: 1.25rem;
+    }
+
+    @media (max-width: 980px) { .problem-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 580px) { .problem-grid { grid-template-columns: 1fr; } }
+
+    .problem-card {
+      padding: 1.2rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    .step-badge {
+      display: inline-block;
+      align-self: flex-start;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.18rem 0.52rem;
+      background: var(--accent-soft);
+      color: var(--accent-main);
+      border: 1.5px solid var(--border);
+      text-transform: uppercase;
+    }
+    [data-theme="dark"] .step-badge { color: #6EE7B7; }
+
+    .problem-card h3 { font-size: 1.04rem; font-weight: 800; line-height: 1.3; }
+    .problem-card p { font-size: 0.9rem; color: var(--ink-muted); line-height: 1.66; }
+
+    /* Subsystem & Trade-Off Cards */
+    .module-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.4rem;
+    }
+
+    @media (max-width: 940px) { .module-grid { grid-template-columns: 1fr; } }
+
+    .module-card {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .module-card-head {
+      background: var(--bg-obsidian);
+      color: #FAF7F2;
+      padding: 0.65rem 1.1rem;
+      border-bottom: 2px solid var(--border);
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .module-card-body {
+      padding: 1.25rem 1.35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      flex: 1;
+    }
+
+    .prose-block {
+      background: var(--bg-paper);
+      border: 1.5px solid var(--border);
+      padding: 0.88rem 1.02rem;
+      font-size: 0.91rem;
+      line-height: 1.68;
+      color: var(--ink);
+    }
+
+    .prose-block-tech {
+      background: var(--bg-subtle);
+      border: 1.5px solid var(--border);
+      padding: 0.88rem 1.02rem;
+      font-size: 0.88rem;
+      line-height: 1.68;
+      color: var(--ink-muted);
+    }
+
+    /* Architecture Canvas */
+    .arch-canvas-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      padding: 0.72rem 1rem;
+      background: var(--bg-subtle);
+      border: 2px solid var(--border);
+      border-bottom: none;
+    }
+
+    .arch-canvas-viewport {
+      background-color: #FFFFFF;
+      background-image: radial-gradient(rgba(24, 24, 27, 0.14) 1px, transparent 1px);
+      background-size: 18px 18px;
+      border: 2px solid #18181B;
+      box-shadow: 4px 4px 0px #18181B;
+      overflow-x: auto;
+      padding: 0.9rem;
+    }
+
+    .arch-canvas-svg {
+      display: block;
+      width: 100%;
+      min-width: 980px;
+      height: auto;
+      transition: width 0.22s ease, min-width 0.22s ease;
+    }
+
+    .arch-canvas-svg.zoom-125 {
+      width: 125%;
+      min-width: 1225px;
+    }
+
+    .svg-title { font-family: 'Caveat', cursive; }
+    .svg-mono { font-family: 'Martian Mono', monospace; }
+
+    .arch-node {
+      cursor: pointer;
+      transition: filter 0.15s ease;
+    }
+
+    .arch-node:hover {
+      filter: drop-shadow(3px 3px 0px #047857);
+    }
+
+    .arch-node.selected .arch-stroke-main {
+      stroke: #047857 !important;
+      stroke-width: 3.2px !important;
+    }
+
+    .arch-inspector {
+      margin-top: 1.05rem;
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 1.15rem 1.3rem;
+    }
+
+    .arch-node-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.42rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .arch-node-pill {
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.69rem;
+      font-weight: 700;
+      padding: 0.28rem 0.6rem;
+      border: 1.5px solid var(--border);
+      background: var(--bg-subtle);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .arch-node-pill.active {
+      background: var(--accent-main);
+      color: #FFFFFF;
+    }
+
+    /* Interactive Demo Tabs */
+    .tab-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.78rem;
+      margin-bottom: 1.45rem;
+    }
+
+    @media (max-width: 960px) { .tab-bar { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 580px) { .tab-bar { grid-template-columns: 1fr; } }
+
+    .tab-btn {
+      text-align: left;
+      padding: 0.98rem 1.05rem;
+      background: var(--bg-card);
+      color: var(--ink);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.12s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 0.34rem;
+    }
+
+    .tab-btn:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow); }
+    .tab-btn.active {
+      background: var(--accent-main);
+      color: var(--accent-ink);
+      box-shadow: var(--shadow);
+      transform: translate(-1px, -1px);
+    }
+
+    .tab-btn-eyebrow { font-family: 'Martian Mono', monospace; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; opacity: 0.88; }
+    .tab-btn-title { font-size: 0.95rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.25; }
+    .tab-btn-desc { font-size: 0.78rem; line-height: 1.45; opacity: 0.92; }
+    .tab-btn-metric { font-family: 'Martian Mono', monospace; font-size: 0.66rem; font-weight: 700; opacity: 0.9; margin-top: 0.15rem; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .sim-header {
+      margin-bottom: 1.15rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .sim-title { font-size: 1.38rem; font-weight: 800; letter-spacing: -0.02em; }
+    .sim-desc { font-family: 'Newsreader', Georgia, serif; font-size: 1.09rem; color: var(--ink-muted); max-width: 860px; margin-top: 0.25rem; }
+
+    .grid-2 { display: grid; grid-template-columns: 1.06fr 1.14fr; gap: 1.3rem; align-items: start; }
+    .grid-equal { display: grid; grid-template-columns: 1fr 1fr; gap: 1.3rem; align-items: start; }
+    @media (max-width: 940px) { .grid-2, .grid-equal { grid-template-columns: 1fr; } }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.18rem 0.52rem;
+      border: 1.5px solid var(--border);
+      text-transform: uppercase;
+    }
+
+    .tag-accent { background: var(--accent-main); color: var(--accent-ink); }
+    .tag-soft { background: var(--accent-soft); color: var(--accent-main); }
+    [data-theme="dark"] .tag-soft { color: #6EE7B7; }
+    .tag-pass { background: var(--pass-soft); color: var(--pass); }
+    .tag-fail { background: var(--fail-soft); color: var(--fail); }
+    .tag-warn { background: var(--warn-soft); color: var(--warn); }
+
+    .thing-list { display: flex; flex-direction: column; gap: 0.7rem; }
+    .thing-card {
+      border: 2px solid var(--border);
+      background: var(--bg-paper);
+      padding: 0.88rem 1rem;
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+    .thing-card:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-sm); }
+    .thing-card.selected { background: var(--accent-soft); border-width: 2.5px; box-shadow: var(--shadow-sm); }
+    .thing-card.expiring { border-color: var(--warn); }
+
+    .thing-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.42rem;
+      margin-top: 0.5rem;
+      padding-top: 0.46rem;
+      border-top: 1px dashed var(--border);
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.68rem;
+    }
+    @media (max-width: 560px) { .thing-meta-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; margin: 0.65rem 0 0.95rem; }
+    @media (max-width: 560px) { .preset-grid { grid-template-columns: 1fr; } }
+
+    .preset-btn {
+      text-align: left;
+      padding: 0.62rem 0.74rem;
+      background: var(--bg-paper);
+      color: var(--ink);
+      border: 1.5px solid var(--border);
+      cursor: pointer;
+      font-family: 'Schibsted Grotesk', sans-serif;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .preset-btn:hover { background: var(--bg-subtle); }
+    .preset-btn.active { background: var(--accent-main); color: var(--accent-ink); border-width: 2px; box-shadow: var(--shadow-sm); }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.83rem;
+      font-weight: 700;
+      margin-bottom: 0.36rem;
+      margin-top: 0.65rem;
+    }
+
+    textarea, select, input[type="text"], input[type="number"] {
+      width: 100%;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.75rem;
+      padding: 0.6rem 0.76rem;
+      background: var(--bg-paper);
+      color: var(--ink);
+      border: 2px solid var(--border);
+      line-height: 1.5;
+    }
+    textarea:focus, select:focus, input[type="text"]:focus, input[type="number"]:focus {
+      outline: 2px solid var(--accent-main);
+      outline-offset: 1px;
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-subtle);
+      border: 2px solid var(--border);
+      border-bottom: none;
+      padding: 0.48rem 0.85rem;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.71rem;
+      font-weight: 700;
+    }
+
+    .code-box {
+      background: var(--bg-code);
+      color: var(--text-code);
+      border: 2px solid var(--border);
+      padding: 0.95rem 1.05rem;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.72rem;
+      line-height: 1.58;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    .verdict-banner {
+      border: 2px solid var(--border);
+      padding: 0.88rem 1.02rem;
+      margin-bottom: 0.9rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+    }
+    .verdict-allow { background: var(--pass-soft); }
+    .verdict-deny { background: var(--fail-soft); }
+    .verdict-warn { background: var(--warn-soft); }
+
+    .table-wrap { overflow-x: auto; border: 2px solid var(--border); background: var(--bg-card); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th, td { padding: 0.62rem 0.76rem; text-align: left; border-bottom: 1.5px solid var(--border); }
+    th { background: var(--bg-subtle); font-family: 'Martian Mono', monospace; font-size: 0.68rem; text-transform: uppercase; font-weight: 700; }
+    tr:last-child td { border-bottom: none; }
+
+    .bar-group { display: flex; flex-direction: column; gap: 0.65rem; margin: 0.8rem 0; }
+    .bar-row { display: flex; flex-direction: column; gap: 0.24rem; }
+    .bar-meta { display: flex; justify-content: space-between; font-family: 'Martian Mono', monospace; font-size: 0.72rem; font-weight: 600; }
+    .bar-track { width: 100%; height: 16px; background: var(--bg-subtle); border: 1.5px solid var(--border); overflow: hidden; }
+    .bar-fill { height: 100%; transition: width 0.28s ease; }
+    .bar-fill-accent { background: var(--accent-main); }
+    .bar-fill-pass { background: var(--pass); }
+
+    .footer {
+      margin-top: 2.8rem;
+      padding-top: 1.6rem;
+      border-top: 2px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-size: 0.84rem;
+      color: var(--ink-muted);
+    }
+  </style>
+</head>
+<body>
+  <!-- Sticky Topbar -->
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="#top" class="brand">
+        <span class="brand-badge">IOTCOREPLANE v1.0</span>
+        <span>IoTCorePlane</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary Navigation">
+        <a class="nav-pill" href="https://d3gk5qze5xyz7y.cloudfront.net" target="_blank" rel="noopener">DeskPilot ↗</a>
+        <a class="nav-pill" href="https://d13kangk4fqjbf.cloudfront.net" target="_blank" rel="noopener">AegisOps ↗</a>
+        <a class="btn btn-obsidian" href="https://github.com/ritwikareddykancharla/iot-core-registry" target="_blank" rel="noopener">★ GitHub Repo</a>
+        <button type="button" class="btn btn-secondary" id="themeToggleBtn" aria-label="Toggle color theme">
+          <span id="themeIcon">🌙</span>
+          <span id="themeLabel">Dark Mode</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Sticky Scroll-Spy Section TOC -->
+  <nav class="toc-bar" aria-label="Section Navigation">
+    <div class="container toc-inner">
+      <span style="font-weight:700; color:var(--ink-muted);">SECTIONS:</span>
+      <a class="toc-link active" href="#problem" data-spy="problem">01 · Problem</a>
+      <a class="toc-link" href="#architecture" data-spy="architecture">02 · Architecture</a>
+      <a class="toc-link" href="#implementation" data-spy="implementation">03 · Implementation</a>
+      <a class="toc-link" href="#tradeoffs" data-spy="tradeoffs">04 · Trade-Offs</a>
+      <a class="toc-link" href="#studio" data-spy="studio">05 · Live Demo</a>
+      <a class="toc-link" href="#benchmarks" data-spy="benchmarks">06 · Benchmarks</a>
+    </div>
+  </nav>
+
+  <main class="container" id="top">
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-top-row">
+        <div class="eyebrow">Device Identity, Registry &amp; State Sync · Built for AWS IoT Core</div>
+        <div class="runtime-pill" id="runtimePill">
+          <span class="pulse-dot"></span>
+          <span id="runtimeModeText">Live Interactive Demo · Powered by Amazon Bedrock</span>
+        </div>
+      </div>
+
+      <h1>IoTCorePlane: Secure Device Identity, Fleet Search, and State Sync for Connected Hardware</h1>
+      <p class="hero-sub">
+        Connected fleets break when device certificates expire mid-shift, a compromised sensor writes to another device's topic, or offline gateways miss cloud updates. IoTCorePlane provisions hardware on first connect, rotates certificates without dropping active sessions, isolates device topics, and reconciles queued state automatically.
+      </p>
+
+      <div class="hero-actions">
+        <a class="btn btn-accent" href="#studio">▶ Try the Live Control Plane ↓</a>
+        <a class="btn btn-secondary" href="#architecture">Explore Architecture ↓</a>
+        <a class="btn btn-secondary" href="#benchmarks">View Measured Benchmarks ↓</a>
+      </div>
+
+      <div class="kpi-strip" id="heroKpiStrip"></div>
+
+      <div class="pipeline-bar" role="region" aria-label="IoTCorePlane Device Lifecycle Flow">
+        <div class="pipe-step"><span class="pipe-num">01</span><span>First-Connect X.509 JITP &amp; Overlap Rotation</span></div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step"><span class="pipe-num">02</span><span>Thing-Scoped MQTT Topic Policy Gate</span></div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step"><span class="pipe-num">03</span><span>Inverted-Index Dynamic Thing Groups</span></div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step"><span class="pipe-num">04</span><span>Versioned Shadow Delta &amp; Bedrock Triage</span></div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- 01 · PROBLEM                                                        -->
+    <!-- =================================================================== -->
+    <section id="problem" class="section">
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">01 · Problem</span>
+          <h2 class="section-title">Problem</h2>
+          <p class="section-desc">
+            Operating industrial sensor and gateway fleets requires tying cryptographic hardware identity directly to MQTT topic permissions, dynamic fleet membership, and offline-resilient state synchronization.
+          </p>
+        </div>
+        <span class="tag tag-accent">AWS IoT Core Identity &amp; Registry</span>
+      </div>
+
+      <div class="overview-callout">
+        <h3>System Scope</h3>
+        <p>
+          IoTCorePlane implements the four tightly coupled primitives of an IoT Identity and Registry control plane: NIST P-256 ECDSA X.509v3 certificate issuance with Just-in-Time Provisioning (<code>0.878 ms</code> median) and overlapping two-certificate rotation (<code>3.431 ms</code> median, <code>0</code> dropped sessions across <code>1,000</code> devices); runtime <code>${iot:Connection.Thing.ThingName}</code> MQTT policy evaluation (<code>0.463 ms</code> median, <code>16 / 16</code> lateral spoofing attacks blocked); an incremental inverted-index Thing Registry that updates Dynamic Thing Groups in <code>0.0062 ms</code> median (<code>594.6x</code> faster than scanning a <code>1,000</code>-Thing SQLite table); and an optimistic-concurrency Device Shadow reconciler paired with Amazon Bedrock (<code>us.amazon.nova-lite-v1:0</code>) for fleet incident diagnostics.
+        </p>
+      </div>
+
+      <div class="problem-grid">
+        <div class="card problem-card">
+          <span class="step-badge">01 · CREDENTIAL CUTOVER</span>
+          <h3>Hard Certificate Swaps Disconnect Live Fleets</h3>
+          <p>Revoking an expiring X.509 device certificate before verifying that the hardware can complete a mutual TLS handshake on its replacement credential strands remote field gateways with no recovery channel.</p>
+        </div>
+        <div class="card problem-card">
+          <span class="step-badge">02 · LATERAL MQTT SPOOFING</span>
+          <h3>Broad Broker Policies Expose Neighbor Devices</h3>
+          <p>When thousands of devices share static wildcard permissions such as <code>$aws/things/*/shadow/update</code>, a single extracted key lets an attacker overwrite setpoints or subscribe to telemetry across the entire fleet.</p>
+        </div>
+        <div class="card problem-card">
+          <span class="step-badge">03 · LINEAR FLEET SCANS</span>
+          <h3>Scanning Every Device Stalls Dynamic Targeting</h3>
+          <p>Evaluating fleet-wide queries like <code>firmware_version &lt; 2.4.0 AND temp_c &gt; 75</code> via full table scans on every telemetry heartbeat turns high-frequency attribute updates into database bottlenecks.</p>
+        </div>
+        <div class="card problem-card">
+          <span class="step-badge">04 · RECONNECT RACE CONDITIONS</span>
+          <h3>Offline Gateways Overwrite Newer Cloud State</h3>
+          <p>Intermittent cellular devices buffer state updates while disconnected. Without strict version Compare-And-Swap checks and recursive <code>delta</code> diffs, delayed replays clobber newer operator configuration changes.</p>
+        </div>
+      </div>
+
+      <div class="scenario-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+          <div>
+            <span class="step-badge">END-TO-END LIFECYCLE TRACE</span>
+            <h3 style="font-size:1.15rem; font-weight:800; margin-top:0.35rem;">Turbine Gateway Onboarding, Thermal Drift Indexing, and Safe Rotation</h3>
+          </div>
+          <span class="tag tag-pass">Interactive in Live Demo</span>
+        </div>
+        <div class="scenario-steps">
+          <div class="scenario-step">
+            <div class="mono" style="font-size:0.7rem; font-weight:700; color:var(--accent-main); margin-bottom:0.3rem;">1 · FIRST-CONNECT JITP (0.878 ms)</div>
+            <code>turbine-gw-001</code> presents an ECDSA P-256 leaf cert signed by the registered Fleet CA. JITP verifies the chain, creates the Thing, activates the cert, and attaches a Thing-scoped policy.
+          </div>
+          <div class="scenario-step">
+            <div class="mono" style="font-size:0.7rem; font-weight:700; color:var(--fail); margin-bottom:0.3rem;">2 · SPOOFING BLOCKED (0.463 ms)</div>
+            Publishing to its own shadow succeeds, while any attempt by <code>coldchain-sensor-042</code> to write to <code>$aws/things/coldchain-sensor-099/shadow/update</code> is denied by variable expansion.
+          </div>
+          <div class="scenario-step">
+            <div class="mono" style="font-size:0.7rem; font-weight:700; color:var(--warn); margin-bottom:0.3rem;">3 · INVERTED RE-INDEX (0.0062 ms)</div>
+            Reporting <code>temp_c: 82.4</code> on firmware <code>2.3.1</code> incrementally adds <code>turbine-gw-001</code> to <code>overheating-legacy-fw</code> without scanning unrelated devices.
+          </div>
+          <div class="scenario-step">
+            <div class="mono" style="font-size:0.7rem; font-weight:700; color:var(--pass); margin-bottom:0.3rem;">4 · OVERLAP CERT ROTATION (3.431 ms)</div>
+            A replacement cert joins in dual-active overlap, completes a signed ECDSA heartbeat check, promotes to primary, and places the retiring cert onto the CRL with zero dropped sessions.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- 02 · ARCHITECTURE                                                   -->
+    <!-- =================================================================== -->
+    <section id="architecture" class="section">
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">02 · Architecture</span>
+          <h2 class="section-title">Architecture</h2>
+          <p class="section-desc">
+            Amazon CloudFront serves static assets from a private S3 bucket via Origin Access Control and routes <code>/api/*</code> calls to Python 3.12 on AWS Lambda. Click any component to inspect its module, security boundary, and measured latency.
+          </p>
+        </div>
+      </div>
+
+      <div class="arch-canvas-toolbar">
+        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+          <span class="mono" style="font-size:0.72rem; font-weight:700;">MULTI-PLANE ARCHITECTURE · CLICK ANY NODE TO INSPECT</span>
+          <span class="tag tag-accent" id="archZoomLabel">Zoom: 100%</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+          <button type="button" class="btn btn-accent" id="zoom100Btn" style="padding:0.32rem 0.65rem; font-size:0.76rem;">100%</button>
+          <button type="button" class="btn btn-secondary" id="zoom125Btn" style="padding:0.32rem 0.65rem; font-size:0.76rem;">125%</button>
+          <button type="button" class="btn btn-secondary" id="zoomResetBtn" style="padding:0.32rem 0.65rem; font-size:0.76rem;">↺ Reset</button>
+          <button type="button" class="btn btn-secondary" id="downloadArchSvgBtn" style="padding:0.32rem 0.65rem; font-size:0.76rem;">⬇ Export SVG</button>
+        </div>
+      </div>
+
+      <div class="arch-canvas-viewport" id="archViewport">
+        <svg id="iotArchSvg" class="arch-canvas-svg" viewBox="0 0 1220 730" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="IoTCorePlane System Architecture Diagram">
+          <defs>
+            <pattern id="archDotGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="1" fill="#D4D4D8" />
+            </pattern>
+          </defs>
+
+          <rect x="0" y="0" width="1220" height="730" fill="#FFFFFF" />
+          <rect x="0" y="0" width="1220" height="730" fill="url(#archDotGrid)" opacity="0.68" />
+
+          <!-- LAYER 1: EDGE & SERVERLESS ENTRY -->
+          <rect x="22" y="18" width="1176" height="146" fill="#FAFAFA" stroke="#71717A" stroke-width="1.6" stroke-dasharray="8 6" />
+          <text x="36" y="42" class="svg-title" font-size="21" font-weight="700" fill="#047857">① Browser Console &amp; Serverless AWS Edge (CloudFront + Private S3 OAC + Python 3.12 Lambda)</text>
+
+          <g class="arch-node selected" data-arch-node="edge-browser" tabindex="0">
+            <rect class="arch-stroke-main" x="38" y="56" width="198" height="84" fill="#DBEAFE" stroke="#18181B" stroke-width="2.1" />
+            <text x="137" y="84" text-anchor="middle" class="svg-title" font-size="22" font-weight="700" fill="#18181B">Fleet Console UI</text>
+            <text x="137" y="106" text-anchor="middle" class="svg-mono" font-size="9.8" font-weight="600" fill="#1E3A8A">4 Interactive Control Tabs</text>
+            <text x="137" y="124" text-anchor="middle" class="svg-mono" font-size="9.2" fill="#3F3F46">URL hash state · Dark mode</text>
+          </g>
+
+          <path d="M 238,98 L 300,98" fill="none" stroke="#18181B" stroke-width="2.1" stroke-dasharray="6 4" />
+          <path d="M 291,92 L 302,98 L 291,104" fill="none" stroke="#18181B" stroke-width="2.1" />
+          <text x="270" y="88" text-anchor="middle" class="svg-title" font-size="16" font-weight="700" fill="#18181B">HTTPS</text>
+
+          <g class="arch-node" data-arch-node="edge-cloudfront" tabindex="0">
+            <rect class="arch-stroke-main" x="304" y="56" width="252" height="84" fill="#D1FAE5" stroke="#18181B" stroke-width="2.1" />
+            <text x="430" y="84" text-anchor="middle" class="svg-title" font-size="22" font-weight="700" fill="#18181B">Amazon CloudFront</text>
+            <text x="430" y="106" text-anchor="middle" class="svg-mono" font-size="9.8" font-weight="600" fill="#065F46">Unified TLS 1.3 Entry Point</text>
+            <text x="430" y="124" text-anchor="middle" class="svg-mono" font-size="9.2" fill="#3F3F46">/* -&gt; S3 OAC · /api/* -&gt; Lambda</text>
+          </g>
+
+          <path d="M 558,80 Q 596,66 636,66" fill="none" stroke="#18181B" stroke-width="2" stroke-dasharray="6 4" />
+          <path d="M 627,60 L 638,66 L 627,72" fill="none" stroke="#18181B" stroke-width="2" />
+          <text x="596" y="58" text-anchor="middle" class="svg-title" font-size="15" font-weight="700" fill="#065F46">Static UI</text>
+
+          <path d="M 558,116 Q 596,128 636,128" fill="none" stroke="#18181B" stroke-width="2" stroke-dasharray="6 4" />
+          <path d="M 627,122 L 638,128 L 627,134" fill="none" stroke="#18181B" stroke-width="2" />
+          <text x="596" y="146" text-anchor="middle" class="svg-title" font-size="15" font-weight="700" fill="#047857">/api/*</text>
+
+          <g class="arch-node" data-arch-node="edge-s3" tabindex="0">
+            <rect class="arch-stroke-main" x="640" y="40" width="272" height="50" fill="#ECFDF5" stroke="#18181B" stroke-width="2" />
+            <text x="776" y="62" text-anchor="middle" class="svg-title" font-size="20" font-weight="700" fill="#18181B">Private S3 Bucket (OAC)</text>
+            <text x="776" y="80" text-anchor="middle" class="svg-mono" font-size="9.2" fill="#065F46">web/index.html · BlockPublicAccess</text>
+          </g>
+
+          <g class="arch-node" data-arch-node="edge-lambda" tabindex="0">
+            <rect class="arch-stroke-main" x="640" y="102" width="272" height="52" fill="#FEF3C7" stroke="#18181B" stroke-width="2" />
+            <text x="776" y="124" text-anchor="middle" class="svg-title" font-size="20" font-weight="700" fill="#18181B">AWS Lambda API (Python 3.12)</text>
+            <text x="776" y="143" text-anchor="middle" class="svg-mono" font-size="9.2" fill="#92400E">iot_core_plane/server.py · 512 MB</text>
+          </g>
+
+          <g transform="rotate(-1.3 1056 96)">
+            <rect x="936" y="42" width="242" height="106" fill="#FEF3C7" stroke="#18181B" stroke-width="2" />
+            <text x="950" y="66" class="svg-title" font-size="19" font-weight="700" fill="#92400E">Serverless Cost Guard</text>
+            <text x="950" y="89" class="svg-title" font-size="17" font-weight="600" fill="#18181B">• $0.00/hr idle infrastructure</text>
+            <text x="950" y="110" class="svg-title" font-size="17" font-weight="600" fill="#18181B">• Real NIST P-256 X.509v3 DER</text>
+            <text x="950" y="131" class="svg-title" font-size="17" font-weight="700" fill="#047857">• 0.424 ms mTLS chain verify</text>
+          </g>
+
+          <path d="M 776,154 Q 770,176 612,194" fill="none" stroke="#18181B" stroke-width="2.1" stroke-dasharray="7 5" />
+          <path d="M 621,188 L 610,195 L 622,200" fill="none" stroke="#18181B" stroke-width="2.1" />
+          <text x="760" y="183" class="svg-title" font-size="16" font-weight="700" fill="#18181B">Authenticate &amp; Authorize Principal</text>
+
+          <!-- LAYER 2: X.509 PKI & MQTT POLICY GATE -->
+          <rect x="22" y="196" width="1176" height="146" fill="#ECFDF5" stroke="#047857" stroke-width="1.6" stroke-dasharray="8 6" />
+          <text x="36" y="220" class="svg-title" font-size="21" font-weight="700" fill="#047857">② X.509 PKI Provisioning, Zero-Downtime Cert Rotation &amp; MQTT Policy Gate (16 / 16 Attacks Blocked)</text>
+
+          <g class="arch-node" data-arch-node="pki-jitp" tabindex="0">
+            <rect class="arch-stroke-main" x="42" y="234" width="356" height="92" fill="#FFFFFF" stroke="#18181B" stroke-width="2.1" />
+            <text x="220" y="262" text-anchor="middle" class="svg-title" font-size="22" font-weight="700" fill="#18181B">Fleet CA, JITP &amp; Claim Bootstrap</text>
+            <text x="220" y="284" text-anchor="middle" class="svg-mono" font-size="9.6" font-weight="700" fill="#047857">ECDSA-P256-SHA256 · SHA-256 Cert ID</text>
+            <text x="220" y="305" text-anchor="middle" class="svg-mono" font-size="9.2" fill="#3F3F46">1,000 devices provisioned · 0.878 ms p50</text>
+          </g>
+
+          <g class="arch-node" data-arch-node="pki-rotation" tabindex="0">
+            <rect class="arch-stroke-main" x="432" y="234" width="356" height="92" fill="#FEF3C7" stroke="#18181B" stroke-width="2.1" />
+            <text x="610" y="262" text-anchor="middle" class="svg-title" font-size="22" font-weight="700" fill="#92400E">Overlapping Cert Rotation &amp; CRL</text>
+            <text x="610" y="284" text-anchor="middle" class="svg-mono" font-size="9.6" font-weight="700" fill="#18181B">PRIMARY + PENDING -&gt; VERIFIED -&gt; CRL</text>
+            <text x="610" y="305" text-anchor="middle" class="svg-mono" font-size="9.2" fill="#78350F">1,000 rotations · 0 dropped sessions</text>
+          </g>
+
+          <g class="arch-node" data-arch-node="policy-gate" tabindex="0">
+            <rect class="arch-stroke-main" x="822" y="234" width="356" height="92" fill="#FEE2E2" stroke="#18181B" stroke-width="2.1" />
+            <text x="1000" y="262" text-anchor="middle" class="svg-title" font-size="22" font-weight="700" fill="#991B1B">Thing-Scoped Policy Variable Gate</text>
+            <text x="1000" y="284" text-anchor="middle" class="svg-mono" font-size="9.5" font-weight="700" fill="#18181B">${iot:Connection.Thing.ThingName}</text>
+            <text x="1000" y="305" text-anchor="middle" class="svg-mono" font-size="9.2" fill="#7F1D1D">0.463 ms p50 · Blocks cross-Thing &amp; +/#</text>
+          </g>
+
+          <path d="M 380,326 Q 340,355 312,380" fill="none" stroke="#18181B" stroke-width="2" stroke-dasharray="6 4" />
+          <path d="M 320,371 L 310,381 L 323,382" fill="none" stroke="#18181B" stroke-width="2" />
+          <text x="242" y="362" class="svg-title" font-size="16" font-weight="700" fill="#1D4ED8">Attribute &amp; Group Index</text>
+
+          <path d="M 860,326 Q 885,355 905,380" fill="none" stroke="#18181B" stroke-width="2" stroke-dasharray="6 4" />
+          <path d="M 896,377 L 907,381 L 905,369" fill="none" stroke="#18181B" stroke-width="2" />
+          <text x="920" y="362" class="svg-title" font-size="16" font-weight="700" fill="#047857">Authorized Shadow Write</text>
+
+          <!-- LAYER 3: REGISTRY & DEVICE SHADOW -->
+          <rect x="22" y="380" width="1176" height="144" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="1.6" stroke-dasharray="8 6" />
+          <text x="36" y="404" class="svg-title" font-size="21" font-weight="700" fill="#1D4ED8">③ Thing Registry, Inverted-Index Dynamic Thing Groups &amp; Versioned Device Shadow (594.6x Speedup)</text>
+
+          <g class="arch-node" data-arch-node="registry-index" tabindex="0">
+            <rect class="arch-stroke-main" x="42" y="418" width="540" height="90" fill="#DBEAFE" stroke="#18181B" stroke-width="2.1" />
+            <text x="312" y="446" text-anchor="middle" class="svg-title" font-size="22" font-weight="700" fill="#18181B">Thing Registry &amp; Inverted Fleet Index</text>
+            <text x="312" y="468" text-anchor="middle" class="svg-mono" font-size="9.6" font-weight="700" fill="#1E3A8A">SQLite WAL · Field-to-Group Subscription Map</text>
+            <text x="312" y="489" text-anchor="middle" class="svg-mono" font-size="9.2" fill="#3F3F46">0.0062 ms incremental re-index vs 3.686 ms linear scan</text>
+          </g>
+
+          <g class="arch-node" data-arch-node="shadow-cas" tabindex="0">
+            <rect class="arch-stroke-main" x="624" y="418" width="554" height="90" fill="#D1FAE5" stroke="#18181B" stroke-width="2.1" />
+            <text x="901" y="446" text-anchor="middle" class="svg-title" font-size="22" font-weight="700" fill="#18181B">Optimistic-CAS Device Shadow Engine</text>
+            <text x="901" y="468" text-anchor="middle" class="svg-mono" font-size="9.6" font-weight="700" fill="#065F46">desired / reported / delta · expected_version CAS</text>
+            <text x="901" y="489" text-anchor="middle" class="svg-mono" font-size="9.2" fill="#3F3F46">0.019 ms p50 · 70 / 70 stale conflicts rejected (409)</text>
+          </g>
+
+          <path d="M 312,510 L 312,568" fill="none" stroke="#6D28D9" stroke-width="2.1" stroke-dasharray="6 4" />
+          <path d="M 306,560 L 312,570 L 318,560" fill="none" stroke="#6D28D9" stroke-width="2.1" />
+          <text x="326" y="548" class="svg-title" font-size="16" font-weight="700" fill="#6D28D9">Fleet Group &amp; Cert Telemetry</text>
+
+          <path d="M 901,510 L 901,568" fill="none" stroke="#047857" stroke-width="2.1" stroke-dasharray="6 4" />
+          <path d="M 895,560 L 901,570 L 907,560" fill="none" stroke="#047857" stroke-width="2.1" />
+          <text x="915" y="548" class="svg-title" font-size="16" font-weight="700" fill="#047857">Shadow Drift &amp; Audit Events</text>
+
+          <!-- LAYER 4: BEDROCK COPILOT & AUDIT FEED -->
+          <g class="arch-node" data-arch-node="bedrock-copilot" tabindex="0">
+            <rect class="arch-stroke-main" x="42" y="574" width="540" height="134" fill="#F3E8FF" stroke="#18181B" stroke-width="2.2" />
+            <text x="312" y="604" text-anchor="middle" class="svg-title" font-size="23" font-weight="700" fill="#5B21B6">④ Amazon Bedrock Fleet Copilot</text>
+            <text x="312" y="629" text-anchor="middle" class="svg-mono" font-size="10" font-weight="700" fill="#18181B">us.amazon.nova-lite-v1:0 · Converse API</text>
+            <text x="312" y="651" text-anchor="middle" class="svg-mono" font-size="9.3" fill="#4C1D95">Diagnoses cert-expiry waves &amp; authors scoped policies</text>
+            <rect x="92" y="666" width="440" height="28" fill="#FFFFFF" stroke="#18181B" stroke-width="1.6" />
+            <text x="312" y="684" text-anchor="middle" class="svg-mono" font-size="9.5" font-weight="700" fill="#047857">✓ 8 / 8 Escalations Passed · 2,830.4 ms p50</text>
+          </g>
+
+          <path d="M 584,642 L 620,642" fill="none" stroke="#18181B" stroke-width="2" stroke-dasharray="5 4" />
+          <path d="M 613,636 L 622,642 L 613,648" fill="none" stroke="#18181B" stroke-width="2" />
+
+          <g class="arch-node" data-arch-node="sqlite-wal" tabindex="0">
+            <rect class="arch-stroke-main" x="624" y="574" width="554" height="134" fill="#FEF3C7" stroke="#18181B" stroke-width="2.2" />
+            <text x="901" y="604" text-anchor="middle" class="svg-title" font-size="23" font-weight="700" fill="#92400E">④ Persistent SQLite WAL State &amp; CRL</text>
+            <text x="901" y="629" text-anchor="middle" class="svg-mono" font-size="10" font-weight="700" fill="#18181B">iot_registry.db · iot_shadows.db · O(1) CRL Map</text>
+            <text x="901" y="651" text-anchor="middle" class="svg-mono" font-size="9.3" fill="#78350F">Atomic version CAS writes + group membership tables</text>
+            <rect x="681" y="666" width="440" height="28" fill="#DCFCE7" stroke="#18181B" stroke-width="1.6" />
+            <text x="901" y="684" text-anchor="middle" class="svg-mono" font-size="9.5" font-weight="700" fill="#065F46">✓ 14 / 14 Unit Tests · Exact Set Parity Verified</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Interactive Component Inspector -->
+      <div class="arch-inspector" id="archInspector">
+        <div class="arch-node-pills" id="archNodePills">
+          <button type="button" class="arch-node-pill active" data-arch-btn="edge-browser">1. Fleet Console</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="edge-cloudfront">2. CloudFront</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="edge-s3">3. Private S3 OAC</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="edge-lambda">4. Lambda API</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="pki-jitp">5. X.509 JITP &amp; Claim</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="pki-rotation">6. Cert Rotation &amp; CRL</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="policy-gate">7. MQTT Policy Gate</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="registry-index">8. Dynamic Thing Groups</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="shadow-cas">9. Device Shadow CAS</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="bedrock-copilot">10. Bedrock Copilot</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="sqlite-wal">11. SQLite WAL Store</button>
+        </div>
+        <div id="archInspectorDetail"></div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- 03 · IMPLEMENTATION                                                 -->
+    <!-- =================================================================== -->
+    <section id="implementation" class="section">
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">03 · Implementation</span>
+          <h2 class="section-title">Implementation</h2>
+          <p class="section-desc">
+            Five focused Python 3.12 modules implement elliptic-curve X.509 certificate lifecycle management, variable-scoped MQTT authorization, inverted-index fleet grouping, optimistic shadow reconciliation, and serverless routing.
+          </p>
+        </div>
+        <span class="tag tag-pass">14 / 14 Unit Tests Passing</span>
+      </div>
+
+      <div class="module-grid">
+        <div class="module-card">
+          <div class="module-card-head">
+            <span>01 · X.509 PKI, JITP &amp; OVERLAPPING ROTATION</span>
+            <span style="color:#6EE7B7;">iot_core_plane/pki_provisioning.py</span>
+          </div>
+          <div class="module-card-body">
+            <div class="prose-block">
+              Generates RFC 5280 ASN.1 DER and PEM X.509v3 certificates signed with NIST P-256 ECDSA-SHA256. Devices onboard on first connect via Fleet CA JITP templates or factory Claim credentials, and rotate expiring leaf certificates without dropping active connections.
+            </div>
+            <div class="prose-block-tech">
+              Precomputes 4-bit Jacobian window tables over <code>secp256r1</code> so ECDSA chain verification finishes in <code>0.424 ms</code> median. <code>finalize_rotation_and_revoke_old()</code> enforces <code>RotationPreconditionError</code> unless the new <code>PENDING_ROTATION</code> cert has completed a signed proof-of-possession heartbeat (<code>VERIFIED_CONNECT</code>), achieving <code>0</code> dropped sessions across <code>1,000</code> rotations.
+            </div>
+          </div>
+        </div>
+
+        <div class="module-card">
+          <div class="module-card-head">
+            <span>02 · THING-SCOPED MQTT POLICY GATE</span>
+            <span style="color:#FCA5A5;">iot_core_plane/policy_gate.py</span>
+          </div>
+          <div class="module-card-body">
+            <div class="prose-block">
+              Evaluates AWS IoT Core policy documents across <code>iot:Connect</code>, <code>iot:Publish</code>, <code>iot:Subscribe</code>, and <code>iot:Receive</code> while binding each mTLS certificate fingerprint to its registered Thing identity.
+            </div>
+            <div class="prose-block-tech">
+              <code>IoTPolicyGate.evaluate()</code> substitutes <code>${iot:Connection.Thing.ThingName}</code>, <code>${iot:ClientId}</code>, and <code>${iot:Connection.Thing.Attributes[...]}</code> at runtime in <code>0.463 ms</code> median, enforces Explicit Deny precedence, blocks unauthorized MQTT <code>+</code> and <code>#</code> topic wildcards, and rejects <code>16 / 16</code> lateral spoofing probes.
+            </div>
+          </div>
+        </div>
+
+        <div class="module-card">
+          <div class="module-card-head">
+            <span>03 · REGISTRY &amp; INVERTED-INDEX THING GROUPS</span>
+            <span style="color:#93C5FD;">iot_core_plane/registry_groups.py</span>
+          </div>
+          <div class="module-card-body">
+            <div class="prose-block">
+              Stores Thing metadata, ThingTypes, and billing groups in SQLite WAL while maintaining an in-memory inverted attribute index that updates Dynamic Thing Group memberships automatically when device telemetry changes.
+            </div>
+            <div class="prose-block-tech">
+              <code>parse_fleet_query()</code> compiles semantic-version and numeric predicates such as <code>firmware_version &lt; 2.4.0 AND temp_c &gt; 75</code> into a field-to-group subscription map. Mutating a device attribute re-evaluates only subscribed groups in <code>0.0062 ms</code> median vs. <code>3.686 ms</code> for a 1,000-Thing SQLite scan (<code>594.6x</code> speedup).
+            </div>
+          </div>
+        </div>
+
+        <div class="module-card">
+          <div class="module-card-head">
+            <span>04 · OPTIMISTIC SHADOW CAS &amp; BEDROCK COPILOT</span>
+            <span style="color:#FDE68A;">iot_core_plane/device_shadow.py · server.py</span>
+          </div>
+          <div class="module-card-body">
+            <div class="prose-block">
+              Tracks classic and named Device Shadows (<code>desired</code>, <code>reported</code>, and recursive <code>delta</code> diffs) for intermittently connected hardware, and pairs with Amazon Bedrock to diagnose fleet-wide incidents and author least-privilege policies.
+            </div>
+            <div class="prose-block-tech">
+              <code>update_shadow()</code> executes atomic SQLite WAL Compare-And-Swap checks (<code>0.019 ms</code> median), raising <code>VersionConflictError</code> (HTTP <code>409</code>) on all <code>70 / 70</code> concurrent stale writes. <code>BedrockFleetCopilot</code> calls <code>us.amazon.nova-lite-v1:0</code> via the Converse API (<code>8 / 8</code> scenarios passed, <code>2,830.4 ms</code> median).
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- 04 · TRADE-OFFS                                                     -->
+    <!-- =================================================================== -->
+    <section id="tradeoffs" class="section">
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">04 · Trade-Offs</span>
+          <h2 class="section-title">Trade-Offs</h2>
+          <p class="section-desc">
+            Every architectural choice balances cryptographic rigor, query latency, consistency guarantees, and idle cloud cost.
+          </p>
+        </div>
+        <span class="tag tag-soft">Engineering Decisions</span>
+      </div>
+
+      <div class="module-grid" style="margin-bottom:0;">
+        <div class="card">
+          <span class="step-badge">01 · OVERLAPPING DUAL-CERT WINDOW</span>
+          <h3 style="font-size:1.08rem; font-weight:800; margin:0.45rem 0;">Temporary Two-Cert Footprint vs. Zero Dropped Sessions</h3>
+          <p style="font-size:0.92rem; color:var(--ink-muted); line-height:1.68;">
+            Allowing both <code>ACTIVE_PRIMARY</code> and <code>PENDING_ROTATION</code> certificates during rotation briefly doubles active principal entries per Thing. In exchange, field gateways never lose connectivity if a firmware OTA restarts mid-rotation, and old keys are placed on the CRL immediately after <code>VERIFIED_CONNECT</code>.
+          </p>
+        </div>
+
+        <div class="card">
+          <span class="step-badge">02 · INCREMENTAL INVERTED INDEX MEMORY</span>
+          <h3 style="font-size:1.08rem; font-weight:800; margin:0.45rem 0;">RAM Posting Lists vs. Full-Table Scan Bottlenecks</h3>
+          <p style="font-size:0.92rem; color:var(--ink-muted); line-height:1.68;">
+            Maintaining equality posting lists and field-to-group subscriptions in memory adds a few kilobytes per thousand Things, but cuts Dynamic Thing Group re-indexing from <code>3.686 ms</code> (full SQLite JSON scan) to <code>0.0062 ms</code> (<code>594.6x</code> faster) on high-frequency shadow updates.
+          </p>
+        </div>
+
+        <div class="card">
+          <span class="step-badge">03 · STRICT OPTIMISTIC VERSION CAS</span>
+          <h3 style="font-size:1.08rem; font-weight:800; margin:0.45rem 0;">Client 409 Retries vs. Distributed Row Locks</h3>
+          <p style="font-size:0.92rem; color:var(--ink-muted); line-height:1.68;">
+            Rejecting stale <code>expected_version</code> writes with HTTP <code>409 VersionConflict</code> requires reconnecting gateways to re-read the latest shadow document before retrying. Avoiding pessimistic locks keeps shadow updates at <code>0.019 ms</code> median and prevents slow cellular links from blocking cloud operators.
+          </p>
+        </div>
+
+        <div class="card">
+          <span class="step-badge">04 · DETERMINISTIC GATES + BEDROCK TRIAGE</span>
+          <h3 style="font-size:1.08rem; font-weight:800; margin:0.45rem 0;">Sub-Millisecond Python Auth vs. On-Demand AI Analysis</h3>
+          <p style="font-size:0.92rem; color:var(--ink-muted); line-height:1.68;">
+            Hot-path mTLS certificate verification (<code>0.424 ms</code>) and MQTT topic isolation (<code>0.463 ms</code>) run deterministically in Python rather than calling an LLM. Amazon Bedrock (<code>2,830.4 ms</code> median) is invoked strictly on operator request to correlate multi-group drift and draft scoped IoT policies.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- 05 · LIVE DEMO                                                      -->
+    <!-- =================================================================== -->
+    <section id="studio" class="section">
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">05 · Live Demo</span>
+          <h2 class="section-title">Live Demo</h2>
+          <p class="section-desc">
+            All four tabs execute live requests against the AWS Lambda <code>/api/*</code> control plane: minting ECDSA P-256 X.509 certificates, rotating credentials, testing cross-Thing MQTT spoofing, querying Dynamic Thing Groups, and diagnosing fleet incidents with Amazon Bedrock.
+          </p>
+        </div>
+        <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+          <span class="tag tag-accent">Live AWS /api/* Backend</span>
+          <button type="button" class="btn btn-secondary" onclick="resetControlPlane()" style="padding:0.34rem 0.72rem; font-size:0.76rem;">↺ Reset Demo Fleet</button>
+        </div>
+      </div>
+
+      <div class="tab-bar" role="tablist" aria-label="IoTCorePlane Interactive Demo Tabs">
+        <button type="button" class="tab-btn active" data-tab="jitp-rotation" role="tab" aria-selected="true" onclick="switchTab('jitp-rotation')">
+          <span class="tab-btn-eyebrow">Tab 01 · X.509 PKI</span>
+          <span class="tab-btn-title">1. JITP Provisioning &amp; Zero-Downtime Cert Rotation</span>
+          <span class="tab-btn-desc">Onboard hardware via JITP or Claim certs and run overlapping ECDSA P-256 rotation</span>
+          <span class="tab-btn-metric" id="tabMetric1"></span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="policy-gate" role="tab" aria-selected="false" onclick="switchTab('policy-gate')">
+          <span class="tab-btn-eyebrow">Tab 02 · Topic Isolation</span>
+          <span class="tab-btn-title">2. Thing-Scoped MQTT Topic Policy Gate</span>
+          <span class="tab-btn-desc">Test ${iot:Connection.Thing.ThingName} policy expansion against lateral spoofing</span>
+          <span class="tab-btn-metric" id="tabMetric2"></span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="dynamic-groups" role="tab" aria-selected="false" onclick="switchTab('dynamic-groups')">
+          <span class="tab-btn-eyebrow">Tab 03 · Fleet Indexing</span>
+          <span class="tab-btn-title">3. Dynamic Thing Groups &amp; Fleet Search</span>
+          <span class="tab-btn-desc">Mutate device attributes and run sub-millisecond inverted-index fleet queries</span>
+          <span class="tab-btn-metric" id="tabMetric3"></span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="shadow-bedrock" role="tab" aria-selected="false" onclick="switchTab('shadow-bedrock')">
+          <span class="tab-btn-eyebrow">Tab 04 · Shadow &amp; AI</span>
+          <span class="tab-btn-title">4. Versioned Device Shadow &amp; AI Fleet Diagnosis</span>
+          <span class="tab-btn-desc">Reconcile desired/reported deltas, trigger 409 CAS conflicts, and run Bedrock triage</span>
+          <span class="tab-btn-metric" id="tabMetric4"></span>
+        </button>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- TAB 1: JITP PROVISIONING & ZERO-DOWNTIME CERT ROTATION            -->
+      <!-- ================================================================= -->
+      <div class="tab-panel active" id="panel-jitp-rotation" role="tabpanel">
+        <div class="sim-header">
+          <div>
+            <h3 class="sim-title">1. JITP Provisioning &amp; Zero-Downtime Cert Rotation</h3>
+            <p class="sim-desc">Select an existing Thing to rotate or revoke its X.509 certificate, or onboard a brand-new industrial gateway via Fleet CA JITP or factory Provisioning-by-Claim.</p>
+          </div>
+          <span class="tag tag-pass" id="crlCountBadge">CRL Revoked: 0</span>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.65rem;">
+              <strong>Registered Thing Fleet (Click to Inspect)</strong>
+              <span class="tag tag-soft" id="fleetCountTag">6 Things</span>
+            </div>
+            <div class="thing-list" id="pkiThingList"></div>
+
+            <div style="border-top:2px solid var(--border); margin-top:1.1rem; padding-top:0.95rem;">
+              <strong>Provision New Hardware Identity</strong>
+              <div class="grid-equal" style="gap:0.65rem; margin-top:0.4rem;">
+                <div>
+                  <label class="control-label" for="provThingInput">Thing Name</label>
+                  <input type="text" id="provThingInput" value="compressor-gw-108" />
+                </div>
+                <div>
+                  <label class="control-label" for="provSerialInput">Manufacturing Serial</label>
+                  <input type="text" id="provSerialInput" value="SN-IND-2108" />
+                </div>
+              </div>
+              <div style="display:flex; gap:0.55rem; flex-wrap:wrap; margin-top:0.8rem;">
+                <button type="button" class="btn btn-accent" id="btnRunJitp" onclick="runProvisionFlow('jitp')">⚡ First-Connect JITP</button>
+                <button type="button" class="btn btn-secondary" id="btnRunClaim" onclick="runProvisionFlow('claim')">🏭 Provision-by-Claim</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+              <strong id="selectedPkiTitle">turbine-gw-001 · X.509 Principal</strong>
+              <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                <button type="button" class="btn btn-accent" id="btnRotateZeroDowntime" onclick="runZeroDowntimeRotation()" style="padding:0.4rem 0.78rem; font-size:0.79rem;">🔄 Rotate Cert (0 Downtime)</button>
+                <button type="button" class="btn btn-danger" id="btnRevokeCert" onclick="runEmergencyRevoke()" style="padding:0.4rem 0.78rem; font-size:0.79rem;">🛑 Revoke on CRL</button>
+              </div>
+            </div>
+
+            <div class="verdict-banner verdict-allow" id="pkiBanner">
+              <div>
+                <strong>● ACTIVE X.509 ECDSA P-256 PRINCIPAL</strong><br />
+                <span style="font-size:0.82rem;">Click <em>Rotate Cert (0 Downtime)</em> to run dual-active overlap, heartbeat verification, and old-cert CRL retirement.</span>
+              </div>
+              <span class="tag tag-pass">ACTIVE_PRIMARY</span>
+            </div>
+
+            <div class="code-header">
+              <span>X.509 CERTIFICATE LIFECYCLE &amp; PEM ARTIFACT</span>
+              <span id="pkiTimingBadge">ECDSA P-256 · SHA-256</span>
+            </div>
+            <pre class="code-box" id="pkiConsoleOutput"></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- TAB 2: THING-SCOPED MQTT TOPIC POLICY GATE                        -->
+      <!-- ================================================================= -->
+      <div class="tab-panel" id="panel-policy-gate" role="tabpanel">
+        <div class="sim-header">
+          <div>
+            <h3 class="sim-title">2. Thing-Scoped MQTT Topic Policy Gate</h3>
+            <p class="sim-desc">Evaluate live MQTT actions against AWS IoT Core policy variable expansion (<code>${iot:Connection.Thing.ThingName}</code> and <code>${iot:ClientId}</code>) and test lateral spoofing attacks.</p>
+          </div>
+          <span class="tag tag-pass">16 / 16 Spoofing Probes Blocked</span>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <strong>Preset MQTT Authorization &amp; Spoofing Scenarios</strong>
+            <div class="preset-grid">
+              <button type="button" class="preset-btn active" onclick="loadPolicyPreset(0)">
+                <span class="mono" style="font-size:0.65rem; font-weight:700;">ALLOW · OWN SHADOW</span>
+                <span style="font-weight:800; font-size:0.81rem;">coldchain-sensor-042 Updates Own Shadow</span>
+              </button>
+              <button type="button" class="preset-btn" onclick="loadPolicyPreset(1)">
+                <span class="mono" style="font-size:0.65rem; font-weight:700;">ATTACK · CROSS-THING SPOOF</span>
+                <span style="font-weight:800; font-size:0.81rem;">Sensor-042 Writes to Sensor-099 Shadow</span>
+              </button>
+              <button type="button" class="preset-btn" onclick="loadPolicyPreset(2)">
+                <span class="mono" style="font-size:0.65rem; font-weight:700;">ATTACK · WILDCARD SNOOP</span>
+                <span style="font-weight:800; font-size:0.81rem;">Subscribe to $aws/things/+/shadow/update/delta</span>
+              </button>
+              <button type="button" class="preset-btn" onclick="loadPolicyPreset(3)">
+                <span class="mono" style="font-size:0.65rem; font-weight:700;">ATTACK · EXPLICIT DENY</span>
+                <span style="font-weight:800; font-size:0.81rem;">Publish to cmd/fleet-admin/reboot-all</span>
+              </button>
+            </div>
+
+            <div class="grid-equal" style="gap:0.65rem;">
+              <div>
+                <label class="control-label" for="polThingSelect">Authenticated Thing</label>
+                <select id="polThingSelect">
+                  <option value="coldchain-sensor-042">coldchain-sensor-042</option>
+                  <option value="turbine-gw-001">turbine-gw-001</option>
+                  <option value="turbine-gw-002">turbine-gw-002</option>
+                  <option value="coldchain-sensor-099">coldchain-sensor-099</option>
+                  <option value="substation-mtr-008">substation-mtr-008</option>
+                </select>
+              </div>
+              <div>
+                <label class="control-label" for="polActionSelect">IoT Data-Plane Action</label>
+                <select id="polActionSelect">
+                  <option value="iot:Publish">iot:Publish</option>
+                  <option value="iot:Subscribe">iot:Subscribe</option>
+                  <option value="iot:Connect">iot:Connect</option>
+                  <option value="iot:Receive">iot:Receive</option>
+                </select>
+              </div>
+            </div>
+
+            <label class="control-label" for="polTopicInput">Target MQTT Topic / Filter / ClientId</label>
+            <input type="text" id="polTopicInput" value="$aws/things/coldchain-sensor-042/shadow/update" />
+
+            <div style="margin-top:0.85rem;">
+              <button type="button" class="btn btn-accent" id="btnEvalPolicy" onclick="evaluatePolicyLive()">🛡 Evaluate IoT Policy Gate</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="verdict-banner verdict-allow" id="policyVerdictBanner">
+              <div>
+                <strong>✅ ALLOW_THING_SCOPED</strong><br />
+                <span style="font-size:0.82rem;">Expanded <code>${iot:Connection.Thing.ThingName}</code> matches authenticated Thing principal.</span>
+              </div>
+              <span class="tag tag-pass" id="policyEvalMsTag">0.46 ms</span>
+            </div>
+
+            <div class="code-header">
+              <span>EXPANDED POLICY DECISION &amp; ATTACHED STATEMENT</span>
+              <span>Explicit Deny &gt; Allow &gt; Implicit Deny</span>
+            </div>
+            <pre class="code-box" id="policyDecisionOutput"></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- TAB 3: DYNAMIC THING GROUPS & FLEET SEARCH                        -->
+      <!-- ================================================================= -->
+      <div class="tab-panel" id="panel-dynamic-groups" role="tabpanel">
+        <div class="sim-header">
+          <div>
+            <h3 class="sim-title">3. Dynamic Thing Groups &amp; Fleet Search</h3>
+            <p class="sim-desc">Run live Fleet Indexing queries across semantic firmware versions and sensor telemetry, or mutate a device's attributes to watch incremental Dynamic Thing Group re-indexing in real time.</p>
+          </div>
+          <span class="tag tag-accent" id="indexSpeedupBadge">594.6x Faster Than Linear Scan</span>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <strong>Live Dynamic Thing Groups (Inverted Index)</strong>
+            <div class="thing-list" id="dynamicGroupsList" style="margin-top:0.65rem;"></div>
+
+            <div style="border-top:2px solid var(--border); margin-top:1.05rem; padding-top:0.9rem;">
+              <strong>Mutate Device Telemetry -&gt; Trigger Incremental Re-Index</strong>
+              <div class="grid-equal" style="gap:0.6rem; margin-top:0.4rem;">
+                <div>
+                  <label class="control-label" for="mutThingSelect">Target Thing</label>
+                  <select id="mutThingSelect">
+                    <option value="turbine-gw-002">turbine-gw-002</option>
+                    <option value="turbine-gw-001">turbine-gw-001</option>
+                    <option value="coldchain-sensor-042">coldchain-sensor-042</option>
+                    <option value="field-valve-017">field-valve-017</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="control-label" for="mutFwInput">Reported Firmware</label>
+                  <input type="text" id="mutFwInput" value="2.3.0" />
+                </div>
+              </div>
+              <div class="grid-equal" style="gap:0.6rem;">
+                <div>
+                  <label class="control-label" for="mutTempInput">Reported Temp (C)</label>
+                  <input type="number" id="mutTempInput" value="84.5" step="0.5" />
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                  <button type="button" class="btn btn-accent" style="width:100%;" id="btnMutateAttrs" onclick="mutateThingAttributesLive()">⚡ Update &amp; Re-Index</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <label class="control-label" for="fleetQueryInput" style="margin-top:0;">
+              <span>Fleet Indexing Query Expression</span>
+              <span class="mono" style="font-size:0.68rem; color:var(--accent-main);">Supports =, !=, &lt;, &lt;=, &gt;, &gt;=, semver</span>
+            </label>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.7rem;">
+              <input type="text" id="fleetQueryInput" value="firmware_version < 2.4.0 AND temp_c > 75" style="flex:1; min-width:240px;" />
+              <button type="button" class="btn btn-accent" id="btnRunFleetQuery" onclick="executeFleetSearchLive()">🔍 Search Fleet</button>
+            </div>
+
+            <div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-bottom:0.85rem;">
+              <button type="button" class="arch-node-pill" onclick="setFleetQuery('firmware_version < 2.4.0 AND temp_c > 75')">Overheating Legacy FW</button>
+              <button type="button" class="arch-node-pill" onclick="setFleetQuery('cert_days_remaining <= 14 AND connectivity = CONNECTED')">Expiring Certs (&lt;= 14d)</button>
+              <button type="button" class="arch-node-pill" onclick="setFleetQuery('battery_pct < 20 AND connectivity = DISCONNECTED')">Low Battery Offline</button>
+              <button type="button" class="arch-node-pill" onclick="setFleetQuery('firmware_version >= 2.4.0 AND connectivity = CONNECTED')">Healthy v2.4+</button>
+            </div>
+
+            <div class="verdict-banner verdict-allow" id="registryBanner">
+              <div>
+                <strong>✓ INVERTED-INDEX QUERY READY</strong><br />
+                <span style="font-size:0.82rem;">Click any group preset or mutate device telemetry on the left to observe instant membership transitions.</span>
+              </div>
+              <span class="tag tag-pass" id="registryTimingTag">0.0062 ms p50</span>
+            </div>
+
+            <div class="code-header">
+              <span>MATCHING THINGS &amp; GROUP TRANSITIONS</span>
+              <span>SQLite WAL + Inverted Posting Lists</span>
+            </div>
+            <pre class="code-box" id="registryConsoleOutput"></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- TAB 4: VERSIONED DEVICE SHADOW & AI FLEET DIAGNOSIS               -->
+      <!-- ================================================================= -->
+      <div class="tab-panel" id="panel-shadow-bedrock" role="tabpanel">
+        <div class="sim-header">
+          <div>
+            <h3 class="sim-title">4. Versioned Device Shadow &amp; AI Fleet Diagnosis</h3>
+            <p class="sim-desc">Update <code>desired</code> and <code>reported</code> shadow JSON with optimistic <code>expected_version</code> Compare-And-Swap checks, test stale <code>409 Conflict</code> protection, and invoke live Amazon Bedrock fleet triage.</p>
+          </div>
+          <span class="tag tag-accent">Amazon Nova Lite · us-west-2</span>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <strong>Optimistic-Concurrency Device Shadow Reconciler</strong>
+            <div class="grid-equal" style="gap:0.6rem; margin-top:0.45rem;">
+              <div>
+                <label class="control-label" for="shThingSelect">Target Thing Shadow</label>
+                <select id="shThingSelect" onchange="syncShadowEditorFromState()">
+                  <option value="turbine-gw-001">turbine-gw-001</option>
+                  <option value="coldchain-sensor-099">coldchain-sensor-099</option>
+                  <option value="field-valve-017">field-valve-017</option>
+                  <option value="coldchain-sensor-042">coldchain-sensor-042</option>
+                </select>
+              </div>
+              <div>
+                <label class="control-label" for="shExpectedVer">Expected Version (CAS)</label>
+                <input type="number" id="shExpectedVer" value="1" />
+              </div>
+            </div>
+
+            <label class="control-label" for="shDesiredInput">Desired State Patch (JSON)</label>
+            <textarea id="shDesiredInput" rows="3">{"sampling_hz": 50, "valve_state": "CLOSED", "firmware_target": "2.4.2"}</textarea>
+
+            <label class="control-label" for="shReportedInput">Reported Hardware Patch (JSON)</label>
+            <textarea id="shReportedInput" rows="3">{"sampling_hz": 50, "valve_state": "CLOSED", "temp_c": 68.0}</textarea>
+
+            <div style="display:flex; gap:0.55rem; flex-wrap:wrap; margin-top:0.8rem;">
+              <button type="button" class="btn btn-accent" id="btnShadowCas" onclick="submitShadowUpdate(false)">✓ Apply CAS Shadow Update</button>
+              <button type="button" class="btn btn-danger" id="btnShadowConflict" onclick="submitShadowUpdate(true)">⚠ Simulate Stale Version (409)</button>
+            </div>
+
+            <div style="border-top:2px solid var(--border); margin-top:1.1rem; padding-top:0.95rem;">
+              <strong>Amazon Bedrock Fleet Escalation Copilot</strong>
+              <label class="control-label" for="bedrockPromptInput">Operator Escalation Prompt</label>
+              <textarea id="bedrockPromptInput" rows="3">Diagnose gateways with certificates expiring within 14 days and overheating legacy firmware shadows, and author a least-privilege IoT policy scoped to ThingName.</textarea>
+              <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.7rem;">
+                <button type="button" class="btn btn-obsidian" id="btnRunBedrock" onclick="runBedrockDiagnosisLive()">🤖 Diagnose Fleet With Amazon Bedrock</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="verdict-banner verdict-allow" id="shadowBedrockBanner">
+              <div>
+                <strong>● SHADOW DELTA &amp; BEDROCK COPILOT CONSOLE</strong><br />
+                <span style="font-size:0.82rem;">Apply a CAS shadow update, test a stale version conflict, or click <em>Diagnose Fleet With Amazon Bedrock</em>.</span>
+              </div>
+              <span class="tag tag-pass" id="shadowVerTag">v1</span>
+            </div>
+
+            <div class="code-header">
+              <span>SHADOW STATE (DESIRED / REPORTED / DELTA) &amp; BEDROCK OUTPUT</span>
+              <span id="bedrockMetaTag">us.amazon.nova-lite-v1:0</span>
+            </div>
+            <pre class="code-box" id="shadowBedrockOutput" style="max-height:460px;"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- 06 · BENCHMARKS                                                     -->
+    <!-- =================================================================== -->
+    <section id="benchmarks" class="section" style="border-bottom:none; padding-bottom:0.5rem;">
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">06 · Benchmarks</span>
+          <h2 class="section-title">Benchmarks</h2>
+          <p class="section-desc" id="benchSubHeader"></p>
+        </div>
+        <span class="tag tag-pass" id="benchTimestampTag"></span>
+      </div>
+
+      <div class="overview-callout" style="margin-bottom:1.35rem;">
+        <h3>Measured Results (<code>benchmarks/latest_results.json</code>)</h3>
+        <p>
+          Across a <code>1,000</code>-device benchmark fleet, X.509 JITP first-connect provisioning finished in <code>0.878 ms</code> median (<code>1.115 ms</code> <code>p95</code>, <code>936.16 ms</code> total wall time), and <code>1,000</code> overlapping ECDSA P-256 certificate rotations completed in <code>3.431 ms</code> median (<code>3.931 ms</code> <code>p95</code>) with <code>0</code> dropped MQTT sessions. The <code>${iot:Connection.Thing.ThingName}</code> policy gate evaluated permissions in <code>0.463 ms</code> median (<code>0.529 ms</code> <code>p95</code>) and blocked <code>16 / 16</code> cross-Thing spoofing and wildcard escalation probes. Incremental Dynamic Thing Group re-indexing finished in <code>0.0062 ms</code> median vs. <code>3.686 ms</code> for a 1,000-Thing SQLite linear scan (<code>594.6x</code> speedup), optimistic shadow CAS updates ran in <code>0.019 ms</code> median while catching <code>70 / 70</code> concurrent stale writes, and <code>8 / 8</code> live Amazon Bedrock (<code>us.amazon.nova-lite-v1:0</code>) escalations passed in <code>2,830.4 ms</code> median (<code>2,175.6</code> mean tokens, <code>17,405</code> total tokens).
+        </p>
+      </div>
+
+      <div class="grid-equal" style="margin-bottom:1.3rem;">
+        <div class="card">
+          <div style="font-weight:800; font-size:1.04rem; margin-bottom:0.65rem;">Median Latency by Control-Plane Stage (Log Scale)</div>
+          <div id="benchLatencySvgBox" style="border:1.5px solid var(--border); background:#FAF7F2; padding:0.5rem;"></div>
+          <div class="bar-group" id="benchMetricBars"></div>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:800; font-size:1.04rem; margin-bottom:0.65rem;">1,000-Device Dynamic Thing Groups (Index Parity Verified)</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Dynamic Group</th>
+                  <th>Fleet Query</th>
+                  <th>Matched</th>
+                  <th>Indexed Fields</th>
+                </tr>
+              </thead>
+              <tbody id="benchGroupsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-equal">
+        <div class="card">
+          <div style="font-weight:800; font-size:1.04rem; margin-bottom:0.65rem;">16 Cross-Thing MQTT Spoofing &amp; Wildcard Attacks</div>
+          <div class="table-wrap" style="max-height:370px; overflow-y:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Attack Vector</th>
+                  <th>Verdict</th>
+                  <th>Eval ms</th>
+                  <th>Blocked</th>
+                </tr>
+              </thead>
+              <tbody id="benchSpoofingBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:800; font-size:1.04rem; margin-bottom:0.65rem;">8 Live Amazon Bedrock Fleet Escalations (us-west-2)</div>
+          <div class="table-wrap" style="max-height:370px; overflow-y:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Escalation Scenario</th>
+                  <th>Category</th>
+                  <th>Bedrock ms</th>
+                  <th>Tokens</th>
+                </tr>
+              </thead>
+              <tbody id="benchBedrockBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>
+        <strong>IoTCorePlane</strong> · X.509 Fleet Provisioning, Thing Registry &amp; Device Shadow Control Plane · Built by Ritwika Reddy Kancharla
+      </div>
+      <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+        <a href="https://d3gk5qze5xyz7y.cloudfront.net" target="_blank" rel="noopener" style="color:var(--ink); font-weight:700;">DeskPilot ↗</a>
+        <a href="https://d13kangk4fqjbf.cloudfront.net" target="_blank" rel="noopener" style="color:var(--ink); font-weight:700;">AegisOps ↗</a>
+        <a href="https://github.com/ritwikareddykancharla/iot-core-registry" target="_blank" rel="noopener" style="color:var(--ink); font-weight:700;">GitHub Repository ↗</a>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      const VALID_TABS = ["jitp-rotation", "policy-gate", "dynamic-groups", "shadow-bedrock"];
+      let activeTab = "jitp-rotation";
+      let activeTheme = "light";
+
+      // Exact 1:1 measured results from benchmarks/latest_results.json
+      let MEASURED_BENCHMARKS = {
+        "service": "iot-core-plane",
+        "benchmark_timestamp_utc": "2026-11-25T22:37:38Z",
+        "environment": {
+          "python_version": "3.14.6",
+          "platform": "Darwin 25.6.0 (arm64)",
+          "aws_region": "us-west-2",
+          "bedrock_model": "us.amazon.nova-lite-v1:0",
+          "pki_cipher_suite": "ECDSA NIST P-256 (secp256r1) + SHA-256 X.509v3 DER/PEM",
+          "storage_engine": "SQLite WAL + In-Memory Inverted Fleet Index"
+        },
+        "headline_kpis": {
+          "jitp_devices_provisioned": 1000,
+          "zero_downtime_rotations_completed": 1000,
+          "dropped_mqtt_sessions": 0,
+          "jitp_p50_ms": 0.878,
+          "jitp_p95_ms": 1.115,
+          "jitp_1000_wall_ms": 936.16,
+          "rotation_p50_ms": 3.431,
+          "rotation_p95_ms": 3.931,
+          "rotation_1000_wall_ms": 3533.41,
+          "mtls_chain_verify_p50_ms": 0.424,
+          "spoofing_attacks_total": 16,
+          "spoofing_attacks_blocked": 16,
+          "spoofing_block_rate_pct": 100.0,
+          "cross_thing_leaks": 0,
+          "policy_gate_p50_ms": 0.463,
+          "policy_gate_p95_ms": 0.529,
+          "inverted_index_reindex_p50_ms": 0.0062,
+          "inverted_index_reindex_p95_ms": 0.0072,
+          "linear_scan_1000_p50_ms": 3.686,
+          "linear_scan_1000_p95_ms": 3.982,
+          "dynamic_group_speedup_x": 594.6,
+          "shadow_cas_p50_ms": 0.019,
+          "shadow_cas_p95_ms": 0.054,
+          "stale_conflicts_injected": 70,
+          "stale_conflicts_blocked": 70,
+          "stale_conflict_detection_pct": 100.0,
+          "bedrock_scenarios_total": 8,
+          "bedrock_scenarios_passed": 8,
+          "bedrock_pass_rate_pct": 100.0,
+          "bedrock_latency_p50_ms": 2830.4,
+          "bedrock_latency_p95_ms": 4401.9,
+          "bedrock_mean_tokens": 2175.6,
+          "bedrock_total_tokens": 17405
+        },
+        "dynamic_group_summary": [
+          { "group_name": "cert-rotation-due-14d", "query_string": "cert_days_remaining <= 14 AND connectivity = CONNECTED", "indexed_fields": ["cert_days_remaining", "connectivity"], "member_count": 200 },
+          { "group_name": "healthy-production-v24", "query_string": "firmware_version >= 2.4.0 AND connectivity = CONNECTED", "indexed_fields": ["connectivity", "firmware_version"], "member_count": 640 },
+          { "group_name": "low-battery-offline", "query_string": "battery_pct < 20 AND connectivity = DISCONNECTED", "indexed_fields": ["battery_pct", "connectivity"], "member_count": 100 },
+          { "group_name": "overheating-legacy-fw", "query_string": "firmware_version < 2.4.0 AND temp_c > 75", "indexed_fields": ["firmware_version", "temp_c"], "member_count": 134 }
+        ],
+        "adversarial_spoofing_results": [
+          { "probe_id": "IOT-ATK-01", "vector": "Lateral Shadow Update Spoof", "action": "iot:Publish", "target": "$aws/things/thing-0099/shadow/update", "verdict": "IMPLICIT_DENY_CROSS_THING", "eval_ms": 0.6019, "blocked": true },
+          { "probe_id": "IOT-ATK-02", "vector": "Lateral Shadow Get Read", "action": "iot:Publish", "target": "$aws/things/thing-0099/shadow/get", "verdict": "IMPLICIT_DENY_CROSS_THING", "eval_ms": 0.4281, "blocked": true },
+          { "probe_id": "IOT-ATK-03", "vector": "Cross-Thing Named Shadow Write", "action": "iot:Publish", "target": "$aws/things/thing-0500/shadow/name/ota/update", "verdict": "IMPLICIT_DENY_CROSS_THING", "eval_ms": 0.4478, "blocked": true },
+          { "probe_id": "IOT-ATK-04", "vector": "Cross-Thing Telemetry Injection", "action": "iot:Publish", "target": "dt/industrial/thing-0099/sensors", "verdict": "IMPLICIT_DENY_CROSS_THING", "eval_ms": 0.4249, "blocked": true },
+          { "probe_id": "IOT-ATK-05", "vector": "MQTT '+' Single-Level Wildcard Subscribe", "action": "iot:Subscribe", "target": "$aws/things/+/shadow/update/delta", "verdict": "IMPLICIT_DENY_CROSS_THING", "eval_ms": 0.4277, "blocked": true },
+          { "probe_id": "IOT-ATK-06", "vector": "MQTT '#' Multi-Level Fleet Snooping", "action": "iot:Subscribe", "target": "dt/industrial/#", "verdict": "IMPLICIT_DENY_CROSS_THING", "eval_ms": 0.4348, "blocked": true },
+          { "probe_id": "IOT-ATK-07", "vector": "MQTT '#' Root Broker Subscribe", "action": "iot:Subscribe", "target": "#", "verdict": "IMPLICIT_DENY_CROSS_THING", "eval_ms": 0.4421, "blocked": true },
+          { "probe_id": "IOT-ATK-08", "vector": "MQTT Wildcard Publish Injection", "action": "iot:Publish", "target": "dt/industrial/+/override", "verdict": "DENY_INVALID_MQTT_PUBLISH_WILDCARD", "eval_ms": 0.0008, "blocked": true },
+          { "probe_id": "IOT-ATK-09", "vector": "ClientId Spoofing on Connect", "action": "iot:Connect", "target": "thing-0099", "verdict": "IMPLICIT_DENY_CROSS_THING", "eval_ms": 0.4486, "blocked": true },
+          { "probe_id": "IOT-ATK-10", "vector": "Principal-to-Thing Cert Impersonation", "action": "iot:Publish", "target": "$aws/things/thing-0099/shadow/update", "verdict": "DENY_PRINCIPAL_THING_MISMATCH", "eval_ms": 0.4132, "blocked": true },
+          { "probe_id": "IOT-ATK-11", "vector": "Revoked CRL Certificate Replay", "action": "iot:Publish", "target": "$aws/things/thing-0000/shadow/update", "verdict": "DENY_INVALID_CERTIFICATE", "eval_ms": 0.0019, "blocked": true },
+          { "probe_id": "IOT-ATK-12", "vector": "Fleet Admin Broadcast Command Topic", "action": "iot:Publish", "target": "cmd/fleet-admin/reboot-all", "verdict": "EXPLICIT_DENY", "eval_ms": 0.4098, "blocked": true },
+          { "probe_id": "IOT-ATK-13", "vector": "System $aws/events Topic Tampering", "action": "iot:Subscribe", "target": "$aws/events/presence/connected/+", "verdict": "IMPLICIT_DENY_CROSS_THING", "eval_ms": 0.4158, "blocked": true },
+          { "probe_id": "IOT-ATK-14", "vector": "Cross-Thing Command Topic Receive", "action": "iot:Receive", "target": "cmd/industrial/thing-0099/valve", "verdict": "IMPLICIT_DENY_CROSS_THING", "eval_ms": 0.6381, "blocked": true },
+          { "probe_id": "IOT-ATK-15", "vector": "Unauthorized Control-Plane Action (iot:AttachPolicy)", "action": "iot:AttachPolicy", "target": "$aws/things/thing-0042/shadow/update", "verdict": "DENY_UNSUPPORTED_ACTION", "eval_ms": 0.0006, "blocked": true },
+          { "probe_id": "IOT-ATK-16", "vector": "Unscoped Root Topic Publish", "action": "iot:Publish", "target": "dt/global/broadcast", "verdict": "IMPLICIT_DENY_CROSS_THING", "eval_ms": 0.4291, "blocked": true }
+        ],
+        "bedrock_diagnostic_results": [
+          { "scenario_id": "ESC-01", "title": "Cert Expiry Wave (<= 14 Days)", "category": "CERT_EXPIRY_WAVE", "bedrock_latency_ms": 4401.91, "total_tokens": 2218, "passed": true },
+          { "scenario_id": "ESC-02", "title": "Overheating Legacy Firmware Drift", "category": "SHADOW_DRIFT_STORM", "bedrock_latency_ms": 3126.85, "total_tokens": 2212, "passed": true },
+          { "scenario_id": "ESC-03", "title": "Cross-Thing MQTT Topic Spoofing Alert", "category": "LEAST_PRIVILEGE_POLICY", "bedrock_latency_ms": 2830.45, "total_tokens": 2145, "passed": true },
+          { "scenario_id": "ESC-04", "title": "Reconnect Shadow VersionConflict Storm", "category": "SHADOW_DRIFT_STORM", "bedrock_latency_ms": 2443.02, "total_tokens": 2203, "passed": true },
+          { "scenario_id": "ESC-05", "title": "Disconnected Low-Battery Sensor Triage", "category": "SHADOW_DRIFT_STORM", "bedrock_latency_ms": 2140.1, "total_tokens": 2111, "passed": true },
+          { "scenario_id": "ESC-06", "title": "Emergency CRL Compromised Key Revocation", "category": "CERT_EXPIRY_WAVE", "bedrock_latency_ms": 2520.14, "total_tokens": 2133, "passed": true },
+          { "scenario_id": "ESC-07", "title": "Named Shadow OTA Rollback Plan", "category": "SHADOW_DRIFT_STORM", "bedrock_latency_ms": 3353.88, "total_tokens": 2188, "passed": true },
+          { "scenario_id": "ESC-08", "title": "Provisioning-by-Claim Factory Bootstrap Lockdown", "category": "SHADOW_DRIFT_STORM", "bedrock_latency_ms": 2484.08, "total_tokens": 2195, "passed": true }
+        ]
+      };
+
+      const ARCH_NODE_DETAILS = {
+        "edge-browser": {
+          plane: "Layer ① · Browser Console & Serverless Edge",
+          title: "Operator Fleet Console UI",
+          module: "web/index.html",
+          summary: "Interactive Neo-Brutalist console for X.509 JITP and Claim onboarding, zero-downtime certificate rotation, MQTT policy evaluation, Dynamic Thing Group search, and Device Shadow reconciliation. Persists active tab and color theme strictly in URL hash state.",
+          metric: "4 Live Control Planes · Hash URL State"
+        },
+        "edge-cloudfront": {
+          plane: "Layer ① · Browser Console & Serverless Edge",
+          title: "Amazon CloudFront CDN & Router",
+          module: "infra/deploy_cloudfront.sh · Origin Access Control",
+          summary: "Terminates HTTPS at the edge, serves static UI assets from the private S3 bucket, and forwards /api/* requests directly to the Python 3.12 AWS Lambda Function URL on the same origin.",
+          metric: "Single-Origin HTTPS · TLS 1.3"
+        },
+        "edge-s3": {
+          plane: "Layer ① · Browser Console & Serverless Edge",
+          title: "Private Amazon S3 Web Bucket",
+          module: "s3://iotcoreplane-web-796330847946-us-west-2",
+          summary: "Holds static web assets with all four S3 BlockPublicAccess flags enabled, granting read access exclusively to the CloudFront distribution ARN via SigV4 Origin Access Control.",
+          metric: "Public Access Off · $0.00 Idle"
+        },
+        "edge-lambda": {
+          plane: "Layer ① · Browser Console & Serverless Edge",
+          title: "AWS Lambda Python 3.12 Control Plane API",
+          module: "iot_core_plane/server.py :: lambda_handler",
+          summary: "Executes JITP/Claim provisioning, ECDSA P-256 rotation, MQTT policy evaluation, inverted-index Thing Registry queries, shadow CAS updates, and Bedrock Converse calls with zero standing servers.",
+          metric: "Python 3.12 · 512 MB · 30s Timeout"
+        },
+        "pki-jitp": {
+          plane: "Layer ② · X.509 Identity & Policy Gate",
+          title: "Fleet CA, JITP & Provisioning-by-Claim",
+          module: "iot_core_plane/pki_provisioning.py :: PKIProvisioningAuthority",
+          summary: "Signs RFC 5280 ASN.1 DER/PEM X.509v3 leaf certificates using NIST P-256 ECDSA-SHA256, verifies CA proof-of-possession registration codes, and evaluates JITP or factory Claim templates on first connect.",
+          metric: "1,000 Devices · 0.878 ms JITP p50"
+        },
+        "pki-rotation": {
+          plane: "Layer ② · X.509 Identity & Policy Gate",
+          title: "Zero-Downtime Certificate Rotation & CRL",
+          module: "iot_core_plane/pki_provisioning.py :: rotate_certificate_zero_downtime",
+          summary: "Attaches a PENDING_ROTATION certificate alongside ACTIVE_PRIMARY, verifies a signed ECDSA heartbeat on the new cert (VERIFIED_CONNECT), and only then revokes the retiring certificate onto the O(1) CRL.",
+          metric: "1,000 Rotations · 0 Dropped Sessions"
+        },
+        "policy-gate": {
+          plane: "Layer ② · X.509 Identity & Policy Gate",
+          title: "Thing-Scoped MQTT Policy Variable Gate",
+          module: "iot_core_plane/policy_gate.py :: IoTPolicyGate.evaluate",
+          summary: "Expands ${iot:Connection.Thing.ThingName} and ${iot:ClientId} across iot:Connect, iot:Publish, iot:Subscribe, and iot:Receive, blocking cross-Thing shadow writes and unauthorized +/# MQTT wildcards.",
+          metric: "16 / 16 Attacks Blocked · 0.463 ms p50"
+        },
+        "registry-index": {
+          plane: "Layer ③ · Thing Registry & Device Shadow",
+          title: "SQLite WAL Registry & Inverted Fleet Index",
+          module: "iot_core_plane/registry_groups.py :: ThingRegistry",
+          summary: "Indexes Thing attributes and semver firmware fields into equality posting lists and a field-to-group subscription map so telemetry updates re-evaluate only subscribed Dynamic Thing Groups.",
+          metric: "0.0062 ms p50 · 594.6x vs Linear Scan"
+        },
+        "shadow-cas": {
+          plane: "Layer ③ · Thing Registry & Device Shadow",
+          title: "Optimistic-Concurrency Device Shadow Engine",
+          module: "iot_core_plane/device_shadow.py :: DeviceShadowEngine",
+          summary: "Computes recursive desired-minus-reported delta payloads, handles null field tombstones, syncs reported telemetry into Dynamic Thing Groups, and enforces strict expected_version CAS.",
+          metric: "0.019 ms p50 · 70 / 70 Conflicts Caught"
+        },
+        "bedrock-copilot": {
+          plane: "Layer ④ · AI Fleet Copilot & Persistence",
+          title: "Amazon Bedrock Fleet Escalation Copilot",
+          module: "iot_core_plane/device_shadow.py :: BedrockFleetCopilot",
+          summary: "Calls Amazon Nova Lite (us.amazon.nova-lite-v1:0) via the Converse API with live fleet group counts, expiring certs, and shadow deltas to produce root-cause steps and least-privilege IoT policies.",
+          metric: "8 / 8 Passed · 2,830.4 ms p50"
+        },
+        "sqlite-wal": {
+          plane: "Layer ④ · AI Fleet Copilot & Persistence",
+          title: "SQLite WAL Registry, Shadow & CRL Store",
+          module: "iot_registry.db · iot_shadows.db",
+          summary: "Persists Things, Dynamic Thing Group memberships, and versioned Device Shadow documents in SQLite Write-Ahead Logging mode for durable concurrent reads and atomic CAS updates.",
+          metric: "14 / 14 Unit Tests · 100% Index Parity"
+        }
+      };
+
+      const POLICY_PRESETS = [
+        { thing: "coldchain-sensor-042", action: "iot:Publish", topic: "$aws/things/coldchain-sensor-042/shadow/update" },
+        { thing: "coldchain-sensor-042", action: "iot:Publish", topic: "$aws/things/coldchain-sensor-099/shadow/update" },
+        { thing: "coldchain-sensor-042", action: "iot:Subscribe", topic: "$aws/things/+/shadow/update/delta" },
+        { thing: "coldchain-sensor-042", action: "iot:Publish", topic: "cmd/fleet-admin/reboot-all" }
+      ];
+
+      const state = {
+        selectedThing: "turbine-gw-001",
+        things: [
+          {
+            thing_name: "turbine-gw-001",
+            thing_type: "IndustrialGatewayV2",
+            billing_group: "industrial-fleet-west",
+            version: 1,
+            attributes: { firmware_version: "2.3.1", temp_c: 82.4, battery_pct: 88, connectivity: "CONNECTED", cert_days_remaining: 9, hardware_serial: "SN-IND-1001" },
+            dynamic_groups: ["cert-rotation-due-14d", "overheating-legacy-fw"],
+            active_certificate: { certificate_id: "91d4f8a2c3e7b10485a9d2c4f6e8b0a191d4f8a2c3e7b10485a9d2c4f6e8b0a1", certificate_id_short: "91d4f8a2c3e7b104", status: "ACTIVE", rotation_role: "ACTIVE_PRIMARY", days_remaining: 9 },
+            shadow: { version: 1, state: { desired: { sampling_hz: 50, valve_state: "CLOSED", firmware_target: "2.4.2" }, reported: { sampling_hz: 10, valve_state: "OPEN", firmware_target: "2.3.1", temp_c: 82.4 }, delta: { sampling_hz: 50, valve_state: "CLOSED", firmware_target: "2.4.2" } }, delta: { sampling_hz: 50, valve_state: "CLOSED", firmware_target: "2.4.2" }, has_delta: true }
+          },
+          {
+            thing_name: "coldchain-sensor-042",
+            thing_type: "IndustrialGatewayV2",
+            billing_group: "industrial-fleet-west",
+            version: 1,
+            attributes: { firmware_version: "2.4.2", temp_c: 4.2, battery_pct: 91, connectivity: "CONNECTED", cert_days_remaining: 180, hardware_serial: "SN-IND-1042" },
+            dynamic_groups: ["healthy-production-v24"],
+            active_certificate: { certificate_id: "4c8a2e19f0b3d7a5e6c1f2a4b8d0e9c34c8a2e19f0b3d7a5e6c1f2a4b8d0e9c3", certificate_id_short: "4c8a2e19f0b3d7a5", status: "ACTIVE", rotation_role: "ACTIVE_PRIMARY", days_remaining: 180 },
+            shadow: { version: 1, state: { desired: { target_temp_c: 4.0, alarm_armed: true }, reported: { target_temp_c: 4.0, alarm_armed: true, temp_c: 4.2 } }, delta: {}, has_delta: false }
+          }
+        ],
+        dynamicGroups: MEASURED_BENCHMARKS.dynamic_group_summary,
+        crlRevokedCount: 0
+      };
+
+      function esc(v) {
+        return String(v == null ? "" : v)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      // Architecture SVG Inspector, Zoom & Export
+      function selectArchNode(nodeId) {
+        const info = ARCH_NODE_DETAILS[nodeId] || ARCH_NODE_DETAILS["pki-jitp"];
+        document.querySelectorAll("#iotArchSvg .arch-node").forEach(function (el) {
+          el.classList.toggle("selected", el.getAttribute("data-arch-node") === nodeId);
+        });
+        document.querySelectorAll("#archNodePills [data-arch-btn]").forEach(function (btn) {
+          btn.classList.toggle("active", btn.getAttribute("data-arch-btn") === nodeId);
+        });
+        const box = document.getElementById("archInspectorDetail");
+        if (box) {
+          box.innerHTML =
+            '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.45rem;">' +
+              '<div>' +
+                '<span class="tag tag-accent" style="margin-bottom:0.35rem;">' + esc(info.plane) + '</span>' +
+                '<h3 style="font-size:1.06rem; font-weight:800;">' + esc(info.title) + '</h3>' +
+              '</div>' +
+              '<span class="tag tag-pass">' + esc(info.metric) + '</span>' +
+            '</div>' +
+            '<div class="mono" style="font-size:0.73rem; color:var(--accent-main); margin-bottom:0.45rem;">Module / Resource: <code>' + esc(info.module) + '</code></div>' +
+            '<p style="font-size:0.91rem; color:var(--ink-muted); line-height:1.65;">' + esc(info.summary) + '</p>';
+        }
+      }
+
+      document.querySelectorAll("#iotArchSvg .arch-node").forEach(function (el) {
+        el.addEventListener("click", function () { selectArchNode(el.getAttribute("data-arch-node")); });
+        el.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            selectArchNode(el.getAttribute("data-arch-node"));
+          }
+        });
+      });
+      document.querySelectorAll("#archNodePills [data-arch-btn]").forEach(function (btn) {
+        btn.addEventListener("click", function () { selectArchNode(btn.getAttribute("data-arch-btn")); });
+      });
+
+      const archSvg = document.getElementById("iotArchSvg");
+      const archViewport = document.getElementById("archViewport");
+      const zoom100Btn = document.getElementById("zoom100Btn");
+      const zoom125Btn = document.getElementById("zoom125Btn");
+      const zoomResetBtn = document.getElementById("zoomResetBtn");
+      const archZoomLabel = document.getElementById("archZoomLabel");
+
+      function setArchZoom(mode) {
+        if (!archSvg) return;
+        const is125 = mode === "125";
+        archSvg.classList.toggle("zoom-125", is125);
+        archZoomLabel.textContent = is125 ? "Zoom: 125%" : "Zoom: 100%";
+        zoom100Btn.className = is125 ? "btn btn-secondary" : "btn btn-accent";
+        zoom125Btn.className = is125 ? "btn btn-accent" : "btn btn-secondary";
+        if (mode === "reset" && archViewport) {
+          archViewport.scrollTo({ left: 0, behavior: "smooth" });
+          selectArchNode("pki-jitp");
+        }
+      }
+      zoom100Btn.addEventListener("click", function () { setArchZoom("100"); });
+      zoom125Btn.addEventListener("click", function () { setArchZoom("125"); });
+      zoomResetBtn.addEventListener("click", function () { setArchZoom("reset"); });
+
+      document.getElementById("downloadArchSvgBtn").addEventListener("click", function () {
+        const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + archSvg.outerHTML;
+        const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "iotcoreplane-architecture.svg";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      });
+
+      // Scroll-spy for Section TOC
+      const sectionIds = ["problem", "architecture", "implementation", "tradeoffs", "studio", "benchmarks"];
+      window.addEventListener("scroll", function () {
+        let current = "problem";
+        for (let i = 0; i < sectionIds.length; i++) {
+          const el = document.getElementById(sectionIds[i]);
+          if (el && el.getBoundingClientRect().top <= 165) {
+            current = sectionIds[i];
+          }
+        }
+        document.querySelectorAll(".toc-link[data-spy]").forEach(function (link) {
+          link.classList.toggle("active", link.getAttribute("data-spy") === current);
+        });
+      }, { passive: true });
+
+      // URL Hash State for Tab & Theme
+      function parseHashState() {
+        const raw = (window.location.hash || "").replace(/^#/, "");
+        if (!raw) return;
+        raw.split("&").forEach(function (part) {
+          if (VALID_TABS.includes(part)) activeTab = part;
+          else if (part === "theme=dark" || part === "dark") activeTheme = "dark";
+          else if (part === "theme=light") activeTheme = "light";
+        });
+      }
+
+      function syncHashState() {
+        const hash = activeTheme === "dark" ? activeTab + "&theme=dark" : activeTab;
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, "", "#" + hash);
+        } else {
+          window.location.hash = hash;
+        }
+      }
+
+      function applyTheme(theme) {
+        activeTheme = theme;
+        document.documentElement.setAttribute("data-theme", theme);
+        document.getElementById("themeIcon").textContent = theme === "dark" ? "☀️" : "🌙";
+        document.getElementById("themeLabel").textContent = theme === "dark" ? "Light Mode" : "Dark Mode";
+        syncHashState();
+      }
+
+      document.getElementById("themeToggleBtn").addEventListener("click", function () {
+        applyTheme(activeTheme === "dark" ? "light" : "dark");
+      });
+
+      window.switchTab = function (tabId) {
+        if (!VALID_TABS.includes(tabId)) return;
+        activeTab = tabId;
+        document.querySelectorAll(".tab-btn").forEach(function (btn) {
+          const match = btn.getAttribute("data-tab") === tabId;
+          btn.classList.toggle("active", match);
+          btn.setAttribute("aria-selected", match ? "true" : "false");
+        });
+        document.querySelectorAll(".tab-panel").forEach(function (panel) {
+          panel.classList.toggle("active", panel.id === "panel-" + tabId);
+        });
+        syncHashState();
+      };
+
+      async function apiGet(path) {
+        const res = await fetch(path, { headers: { Accept: "application/json" } });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      }
+
+      async function apiPost(path, body) {
+        const res = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(body || {})
+        });
+        const data = await res.json();
+        return { ok: res.ok, status: res.status, data: data };
+      }
+
+      function renderMeasuredKpisAndBenchmarks() {
+        const k = MEASURED_BENCHMARKS.headline_kpis;
+
+        document.getElementById("heroKpiStrip").innerHTML =
+          '<div class="card kpi-card">' +
+            '<div class="kpi-val">' + k.dropped_mqtt_sessions + ' Dropped Sessions</div>' +
+            '<div class="kpi-label">' + k.zero_downtime_rotations_completed.toLocaleString() + ' Cert Rotations &amp; JITP</div>' +
+            '<div class="kpi-sub"><em>JITP in ' + k.jitp_p50_ms + ' ms p50 · Overlap rotation in ' + k.rotation_p50_ms + ' ms p50</em></div>' +
+          '</div>' +
+          '<div class="card kpi-card">' +
+            '<div class="kpi-val">' + k.spoofing_attacks_blocked + ' / ' + k.spoofing_attacks_total + ' (' + k.spoofing_block_rate_pct.toFixed(1) + '%)</div>' +
+            '<div class="kpi-label">Cross-Thing Spoofing Blocked</div>' +
+            '<div class="kpi-sub"><em>${iot:Connection.Thing.ThingName} gate in ' + k.policy_gate_p50_ms + ' ms p50</em></div>' +
+          '</div>' +
+          '<div class="card kpi-card">' +
+            '<div class="kpi-val">' + k.dynamic_group_speedup_x + 'x Faster</div>' +
+            '<div class="kpi-label">Inverted-Index Thing Groups</div>' +
+            '<div class="kpi-sub"><em>' + k.inverted_index_reindex_p50_ms + ' ms incremental re-index vs ' + k.linear_scan_1000_p50_ms + ' ms scan</em></div>' +
+          '</div>' +
+          '<div class="card kpi-card">' +
+            '<div class="kpi-val">' + k.stale_conflicts_blocked + ' / ' + k.stale_conflicts_injected + ' Caught</div>' +
+            '<div class="kpi-label">Shadow CAS &amp; ' + k.bedrock_scenarios_passed + ' / ' + k.bedrock_scenarios_total + ' Bedrock Triage</div>' +
+            '<div class="kpi-sub"><em>' + k.shadow_cas_p50_ms + ' ms shadow CAS · ' + k.bedrock_latency_p50_ms + ' ms Bedrock p50</em></div>' +
+          '</div>';
+
+        document.getElementById("tabMetric1").textContent =
+          k.jitp_devices_provisioned.toLocaleString() + " JITP · " + k.dropped_mqtt_sessions + " dropped · " + k.rotation_p50_ms + " ms";
+        document.getElementById("tabMetric2").textContent =
+          k.spoofing_attacks_blocked + " / " + k.spoofing_attacks_total + " Blocked · " + k.policy_gate_p50_ms + " ms p50";
+        document.getElementById("tabMetric3").textContent =
+          k.dynamic_group_speedup_x + "x Speedup · " + k.inverted_index_reindex_p50_ms + " ms p50";
+        document.getElementById("tabMetric4").textContent =
+          k.stale_conflicts_blocked + " / " + k.stale_conflicts_injected + " CAS · " + k.bedrock_scenarios_passed + " / " + k.bedrock_scenarios_total + " Bedrock";
+
+        document.getElementById("benchSubHeader").textContent =
+          "Measured by benchmarks/run_benchmarks.py across 1,000 X.509 JITP devices, 1,000 zero-downtime certificate rotations, 16 cross-Thing MQTT spoofing attacks, 70 concurrent CAS races, and 8 live Amazon Bedrock calls in " +
+          MEASURED_BENCHMARKS.environment.aws_region + ".";
+        document.getElementById("benchTimestampTag").textContent =
+          MEASURED_BENCHMARKS.benchmark_timestamp_utc;
+
+        const stages = [
+          { label: "Inverted Re-Index", p50: k.inverted_index_reindex_p50_ms, color: "#059669" },
+          { label: "Shadow CAS Write", p50: k.shadow_cas_p50_ms, color: "#047857" },
+          { label: "mTLS Chain Check", p50: k.mtls_chain_verify_p50_ms, color: "#1D4ED8" },
+          { label: "MQTT Policy Gate", p50: k.policy_gate_p50_ms, color: "#6D28D9" },
+          { label: "JITP First Connect", p50: k.jitp_p50_ms, color: "#D97706" },
+          { label: "Overlap Rotation", p50: k.rotation_p50_ms, color: "#DC2626" },
+          { label: "Bedrock Triage", p50: k.bedrock_latency_p50_ms, color: "#18181B" }
+        ];
+        function logW(ms) {
+          const val = Math.max(0.004, ms);
+          const pct = ((Math.log10(val) - Math.log10(0.004)) / (Math.log10(5000) - Math.log10(0.004))) * 330;
+          return Math.max(8, Math.min(330, +pct.toFixed(1)));
+        }
+        let svgRows = "";
+        stages.forEach(function (st, i) {
+          const y = 18 + i * 30;
+          svgRows +=
+            '<text x="10" y="' + (y + 13) + '" font-family="monospace" font-size="10.2" font-weight="700" fill="#141413">' + esc(st.label) + '</text>' +
+            '<rect x="154" y="' + y + '" width="330" height="16" fill="#F2ECE1" stroke="#18181B" stroke-width="1.2"/>' +
+            '<rect x="154" y="' + y + '" width="' + logW(st.p50) + '" height="16" fill="' + st.color + '"/>' +
+            '<text x="492" y="' + (y + 12) + '" font-family="monospace" font-size="10" fill="#141413">p50: ' + st.p50 + ' ms</text>';
+        });
+        document.getElementById("benchLatencySvgBox").innerHTML =
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 610 236" style="width:100%; height:auto; display:block;">' +
+          '<rect width="610" height="236" fill="#FAF7F2"/>' + svgRows + '</svg>';
+
+        document.getElementById("benchMetricBars").innerHTML =
+          '<div class="bar-row"><div class="bar-meta"><span>Cross-Thing MQTT Spoofing Blocked (' + k.spoofing_attacks_blocked + ' / ' + k.spoofing_attacks_total + ')</span><span>' + k.spoofing_block_rate_pct.toFixed(1) + '%</span></div><div class="bar-track"><div class="bar-fill bar-fill-accent" style="width:' + k.spoofing_block_rate_pct + '%;"></div></div></div>' +
+          '<div class="bar-row"><div class="bar-meta"><span>Stale Shadow CAS Conflicts Rejected (' + k.stale_conflicts_blocked + ' / ' + k.stale_conflicts_injected + ')</span><span>' + k.stale_conflict_detection_pct.toFixed(1) + '%</span></div><div class="bar-track"><div class="bar-fill bar-fill-pass" style="width:' + k.stale_conflict_detection_pct + '%;"></div></div></div>' +
+          '<div class="bar-row"><div class="bar-meta"><span>Live Amazon Bedrock Escalations Passed (' + k.bedrock_scenarios_passed + ' / ' + k.bedrock_scenarios_total + ')</span><span>' + k.bedrock_pass_rate_pct.toFixed(1) + '%</span></div><div class="bar-track"><div class="bar-fill bar-fill-accent" style="width:' + k.bedrock_pass_rate_pct + '%;"></div></div></div>';
+
+        document.getElementById("benchGroupsBody").innerHTML = MEASURED_BENCHMARKS.dynamic_group_summary.map(function (g) {
+          return (
+            "<tr>" +
+              "<td class='mono'><strong>" + esc(g.group_name) + "</strong></td>" +
+              "<td class='mono' style='font-size:0.69rem;'>" + esc(g.query_string) + "</td>" +
+              "<td><span class='tag tag-pass'>" + g.member_count + " / 1000</span></td>" +
+              "<td class='mono' style='font-size:0.69rem;'>" + esc((g.indexed_fields || []).join(", ")) + "</td>" +
+            "</tr>"
+          );
+        }).join("");
+
+        document.getElementById("benchSpoofingBody").innerHTML = MEASURED_BENCHMARKS.adversarial_spoofing_results.map(function (a) {
+          return (
+            "<tr>" +
+              "<td class='mono'><strong>" + esc(a.probe_id) + "</strong></td>" +
+              "<td>" + esc(a.vector) + "<div class='mono' style='font-size:0.67rem; color:var(--ink-muted);'>" + esc(a.action) + " -> " + esc(a.target) + "</div></td>" +
+              "<td><span class='tag tag-fail'>" + esc(a.verdict) + "</span></td>" +
+              "<td class='mono'>" + a.eval_ms + " ms</td>" +
+              "<td class='mono' style='color:var(--pass); font-weight:700;'>YES</td>" +
+            "</tr>"
+          );
+        }).join("");
+
+        document.getElementById("benchBedrockBody").innerHTML = MEASURED_BENCHMARKS.bedrock_diagnostic_results.map(function (b) {
+          return (
+            "<tr>" +
+              "<td class='mono'><strong>" + esc(b.scenario_id) + "</strong></td>" +
+              "<td>" + esc(b.title) + "</td>" +
+              "<td><span class='tag tag-soft'>" + esc(b.category) + "</span></td>" +
+              "<td class='mono'>" + b.bedrock_latency_ms + " ms</td>" +
+              "<td class='mono'>" + b.total_tokens + "</td>" +
+            "</tr>"
+          );
+        }).join("");
+      }
+
+      // Render Tab 1 Fleet & Certs
+      window.selectThingCard = function (thingName) {
+        state.selectedThing = thingName;
+        renderPkiFleet();
+      };
+
+      function renderPkiFleet() {
+        document.getElementById("fleetCountTag").textContent = state.things.length + " Things";
+        document.getElementById("crlCountBadge").textContent = "CRL Revoked: " + state.crlRevokedCount;
+
+        document.getElementById("pkiThingList").innerHTML = state.things.map(function (t) {
+          const isSel = t.thing_name === state.selectedThing;
+          const cert = t.active_certificate;
+          const expSoon = cert && cert.days_remaining <= 14;
+          const cls = "thing-card" + (isSel ? " selected" : "") + (expSoon ? " expiring" : "");
+          return (
+            '<div class="' + cls + '" onclick="selectThingCard(\'' + esc(t.thing_name) + '\')">' +
+              '<div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap;">' +
+                '<span class="mono" style="font-weight:700; font-size:0.78rem;">' + esc(t.thing_name) + '</span>' +
+                '<span class="tag ' + (cert ? (expSoon ? "tag-warn" : "tag-pass") : "tag-fail") + '">' +
+                  (cert ? (cert.status + " · " + cert.days_remaining + "d") : "REVOKED / NO CERT") +
+                '</span>' +
+              '</div>' +
+              '<div class="thing-meta-grid">' +
+                '<div>FW: <strong>' + esc(t.attributes.firmware_version) + '</strong></div>' +
+                '<div>Temp: <strong>' + esc(t.attributes.temp_c) + ' C</strong></div>' +
+                '<div>Cert: <strong>' + esc(cert ? cert.certificate_id_short.slice(0, 8) : "CRL") + '</strong></div>' +
+                '<div>Groups: <strong>' + (t.dynamic_groups || []).length + '</strong></div>' +
+              '</div>' +
+            '</div>'
+          );
+        }).join("");
+
+        const cur = state.things.find(function (x) { return x.thing_name === state.selectedThing; }) || state.things[0];
+        if (!cur) return;
+        document.getElementById("selectedPkiTitle").textContent = cur.thing_name + " · X.509 Principal";
+        const outEl = document.getElementById("pkiConsoleOutput");
+        if (!outEl.dataset.customRendered) {
+          outEl.textContent = JSON.stringify({
+            thing_name: cur.thing_name,
+            thing_type: cur.thing_type,
+            billing_group: cur.billing_group,
+            active_certificate: cur.active_certificate,
+            dynamic_groups: cur.dynamic_groups
+          }, null, 2);
+        }
+      }
+
+      function renderDynamicGroupsCards() {
+        document.getElementById("dynamicGroupsList").innerHTML = state.dynamicGroups.map(function (g) {
+          return (
+            '<div class="thing-card" onclick="setFleetQuery(\'' + esc(g.query_string) + '\')">' +
+              '<div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap;">' +
+                '<span class="mono" style="font-weight:700; font-size:0.77rem;">' + esc(g.group_name) + '</span>' +
+                '<span class="tag tag-accent">' + g.member_count + ' Members</span>' +
+              '</div>' +
+              '<div class="mono" style="font-size:0.7rem; color:var(--ink-muted); margin-top:0.25rem;">' + esc(g.query_string) + '</div>' +
+            '</div>'
+          );
+        }).join("");
+      }
+
+      window.syncShadowEditorFromState = function () {
+        const tn = document.getElementById("shThingSelect").value;
+        const found = state.things.find(function (x) { return x.thing_name === tn; });
+        if (found && found.shadow) {
+          document.getElementById("shExpectedVer").value = found.shadow.version || 1;
+          document.getElementById("shDesiredInput").value = JSON.stringify(found.shadow.state.desired || {}, null, 2);
+          document.getElementById("shReportedInput").value = JSON.stringify(found.shadow.state.reported || {}, null, 2);
+          document.getElementById("shadowVerTag").textContent = "v" + found.shadow.version;
+          document.getElementById("shadowBedrockOutput").textContent = JSON.stringify(found.shadow, null, 2);
+        }
+      };
+
+      window.runProvisionFlow = async function (mode) {
+        const btn = document.getElementById(mode === "claim" ? "btnRunClaim" : "btnRunJitp");
+        const thingName = document.getElementById("provThingInput").value.trim() || "compressor-gw-108";
+        const serial = document.getElementById("provSerialInput").value.trim() || "SN-IND-2108";
+        btn.disabled = true;
+        try {
+          const res = await apiPost("/api/provision/jitp", {
+            mode: mode,
+            thing_name: thingName,
+            hardware_serial: serial,
+            attributes: { firmware_version: "2.4.2", temp_c: 48.0, battery_pct: 97, connectivity: "CONNECTED" }
+          });
+          const outBox = document.getElementById("pkiConsoleOutput");
+          outBox.dataset.customRendered = "1";
+          const banner = document.getElementById("pkiBanner");
+          if (res.ok) {
+            state.selectedThing = thingName;
+            banner.className = "verdict-banner verdict-allow";
+            banner.innerHTML =
+              "<div><strong>✅ " + esc(res.data.provisioning_flow) + " ONBOARDED " + esc(thingName) + "</strong><br/>" +
+              "<span style='font-size:0.82rem;'>Signed ECDSA P-256 X.509v3 leaf cert <code>" + esc(res.data.certificate.certificate_id_short) + "</code> and bound policy <code>" + esc(res.data.attached_policy) + "</code>.</span></div>" +
+              "<span class='tag tag-pass'>" + (res.data.jitp_ms || res.data.claim_ms) + " ms</span>";
+            outBox.textContent =
+              JSON.stringify({
+                provisioning_flow: res.data.provisioning_flow,
+                thing_name: res.data.thing_name,
+                certificate_id: res.data.certificate.certificate_id,
+                attached_policy: res.data.attached_policy
+              }, null, 2) + "\n\n" + res.data.certificate.certificate_pem;
+            await refreshLiveState();
+          } else {
+            banner.className = "verdict-banner verdict-deny";
+            banner.innerHTML = "<div><strong>🛑 PROVISIONING REJECTED</strong><br/><span style='font-size:0.82rem;'>" + esc(res.data.error) + "</span></div><span class='tag tag-fail'>REJECTED</span>";
+            outBox.textContent = JSON.stringify(res.data, null, 2);
+          }
+        } catch (err) {
+          document.getElementById("pkiConsoleOutput").textContent = "Error: " + err.message;
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      window.runZeroDowntimeRotation = async function () {
+        const btn = document.getElementById("btnRotateZeroDowntime");
+        btn.disabled = true;
+        try {
+          const res = await apiPost("/api/cert/rotate", {
+            action: "rotate_zero_downtime",
+            thing_name: state.selectedThing,
+            validity_days: 365
+          });
+          const outBox = document.getElementById("pkiConsoleOutput");
+          outBox.dataset.customRendered = "1";
+          const banner = document.getElementById("pkiBanner");
+          if (res.ok) {
+            banner.className = "verdict-banner verdict-allow";
+            banner.innerHTML =
+              "<div><strong>✅ ZERO-DOWNTIME ROTATION COMPLETE (" + res.data.rotation_ms + " ms · 0 Dropped Sessions)</strong><br/>" +
+              "<span style='font-size:0.82rem;'>Promoted <code>" + esc(res.data.new_certificate_id.slice(0, 14)) + "</code> after ECDSA heartbeat and moved old cert <code>" + esc(res.data.old_certificate_id.slice(0, 14)) + "</code> to CRL.</span></div>" +
+              "<span class='tag tag-pass'>0 DROPPED</span>";
+            document.getElementById("pkiTimingBadge").textContent = res.data.rotation_ms + " ms · ECDSA P-256";
+            outBox.textContent = JSON.stringify({
+              thing_name: res.data.thing_name,
+              transitions: res.data.transitions,
+              dropped_sessions: res.data.dropped_sessions,
+              new_certificate_id: res.data.new_certificate_id,
+              revoked_old_certificate_id: res.data.old_certificate_id
+            }, null, 2) + "\n\n" + res.data.new_certificate.certificate_pem;
+            await refreshLiveState();
+          } else {
+            banner.className = "verdict-banner verdict-deny";
+            banner.innerHTML = "<div><strong>⚠ ROTATION BLOCKED</strong><br/><span style='font-size:0.82rem;'>" + esc(res.data.error) + "</span></div><span class='tag tag-fail'>ERROR</span>";
+          }
+        } catch (err) {
+          document.getElementById("pkiConsoleOutput").textContent = "Error: " + err.message;
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      window.runEmergencyRevoke = async function () {
+        const btn = document.getElementById("btnRevokeCert");
+        btn.disabled = true;
+        try {
+          const res = await apiPost("/api/cert/rotate", {
+            action: "revoke",
+            thing_name: state.selectedThing,
+            reason: "COMPROMISED_KEY_EMERGENCY_CRL"
+          });
+          const outBox = document.getElementById("pkiConsoleOutput");
+          outBox.dataset.customRendered = "1";
+          const banner = document.getElementById("pkiBanner");
+          if (res.ok) {
+            banner.className = "verdict-banner verdict-deny";
+            banner.innerHTML =
+              "<div><strong>🛑 CERTIFICATE REVOKED ON CRL</strong><br/>" +
+              "<span style='font-size:0.82rem;'>All subsequent mTLS connections and MQTT publishes using <code>" + esc(res.data.certificate.certificate_id_short) + "</code> are blocked immediately.</span></div>" +
+              "<span class='tag tag-fail'>REVOKED</span>";
+            outBox.textContent = JSON.stringify(res.data, null, 2);
+            await refreshLiveState();
+          } else {
+            outBox.textContent = JSON.stringify(res.data, null, 2);
+          }
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      window.loadPolicyPreset = function (idx) {
+        const p = POLICY_PRESETS[idx] || POLICY_PRESETS[0];
+        document.querySelectorAll("#panel-policy-gate .preset-btn").forEach(function (b, i) {
+          b.classList.toggle("active", i === idx);
+        });
+        document.getElementById("polThingSelect").value = p.thing;
+        document.getElementById("polActionSelect").value = p.action;
+        document.getElementById("polTopicInput").value = p.topic;
+        evaluatePolicyLive();
+      };
+
+      window.evaluatePolicyLive = async function () {
+        const btn = document.getElementById("btnEvalPolicy");
+        const thing = document.getElementById("polThingSelect").value;
+        const action = document.getElementById("polActionSelect").value;
+        const topic = document.getElementById("polTopicInput").value.trim();
+        btn.disabled = true;
+        try {
+          const res = await apiPost("/api/policy/evaluate", {
+            thing_name: thing,
+            action: action,
+            topic: topic,
+            client_id: thing
+          });
+          const d = res.data;
+          const banner = document.getElementById("policyVerdictBanner");
+          document.getElementById("policyEvalMsTag").textContent = d.eval_ms + " ms";
+          if (d.allowed) {
+            banner.className = "verdict-banner verdict-allow";
+            banner.innerHTML =
+              "<div><strong>✅ " + esc(d.verdict) + " (" + esc(d.matched_statement_sid) + ")</strong><br/>" +
+              "<span style='font-size:0.82rem;'>" + esc(d.explanation) + "</span></div>" +
+              "<span class='tag tag-pass'>" + d.eval_ms + " ms</span>";
+          } else {
+            banner.className = "verdict-banner verdict-deny";
+            banner.innerHTML =
+              "<div><strong>🛑 " + esc(d.verdict) + " (" + esc(d.reason_code) + ")</strong><br/>" +
+              "<span style='font-size:0.82rem;'>" + esc(d.explanation) + "</span></div>" +
+              "<span class='tag tag-fail'>BLOCKED (" + d.eval_ms + " ms)</span>";
+          }
+          document.getElementById("policyDecisionOutput").textContent = JSON.stringify(d, null, 2);
+        } catch (err) {
+          document.getElementById("policyDecisionOutput").textContent = "Error: " + err.message;
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      window.setFleetQuery = function (q) {
+        document.getElementById("fleetQueryInput").value = q;
+        executeFleetSearchLive();
+      };
+
+      window.executeFleetSearchLive = async function () {
+        const btn = document.getElementById("btnRunFleetQuery");
+        const q = document.getElementById("fleetQueryInput").value.trim();
+        if (!q) return;
+        btn.disabled = true;
+        try {
+          const res = await apiPost("/api/registry/search", {
+            operation: "query",
+            query_string: q
+          });
+          const d = res.data;
+          const banner = document.getElementById("registryBanner");
+          if (res.ok) {
+            banner.className = "verdict-banner verdict-allow";
+            banner.innerHTML =
+              "<div><strong>✓ MATCHED " + d.matched_count + " / " + d.total_fleet_count + " THINGS IN " + d.query_ms + " ms</strong><br/>" +
+              "<span style='font-size:0.82rem;'>Query: <code>" + esc(d.query_string) + "</code> (SQLite linear scan baseline: " + d.linear_scan_baseline_ms + " ms)</span></div>" +
+              "<span class='tag tag-pass'>" + d.query_ms + " ms</span>";
+            document.getElementById("registryConsoleOutput").textContent = JSON.stringify({
+              query_string: d.query_string,
+              matched_count: d.matched_count,
+              query_ms: d.query_ms,
+              matched_things: d.things
+            }, null, 2);
+            if (Array.isArray(d.dynamic_groups)) {
+              state.dynamicGroups = d.dynamic_groups;
+              renderDynamicGroupsCards();
+            }
+          } else {
+            banner.className = "verdict-banner verdict-deny";
+            banner.innerHTML = "<div><strong>⚠ INVALID QUERY</strong><br/><span style='font-size:0.82rem;'>" + esc(d.error) + "</span></div><span class='tag tag-fail'>ERROR</span>";
+          }
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      window.mutateThingAttributesLive = async function () {
+        const btn = document.getElementById("btnMutateAttrs");
+        const thing = document.getElementById("mutThingSelect").value;
+        const fw = document.getElementById("mutFwInput").value.trim();
+        const temp = parseFloat(document.getElementById("mutTempInput").value || "84.5");
+        btn.disabled = true;
+        try {
+          const res = await apiPost("/api/registry/search", {
+            operation: "update_attributes",
+            thing_name: thing,
+            attributes: { firmware_version: fw, temp_c: temp }
+          });
+          const d = res.data;
+          if (res.ok) {
+            const banner = document.getElementById("registryBanner");
+            banner.className = "verdict-banner verdict-allow";
+            banner.innerHTML =
+              "<div><strong>⚡ INCREMENTAL RE-INDEX COMPLETED IN " + d.reindex_ms + " ms</strong><br/>" +
+              "<span style='font-size:0.82rem;'>Groups Added: <code>" + esc((d.groups_added || []).join(", ") || "none") + "</code> · Groups Removed: <code>" + esc((d.groups_removed || []).join(", ") || "none") + "</code></span></div>" +
+              "<span class='tag tag-pass'>" + d.reindex_ms + " ms</span>";
+            document.getElementById("registryConsoleOutput").textContent = JSON.stringify(d, null, 2);
+            await refreshLiveState();
+          }
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      window.submitShadowUpdate = async function (forceStaleConflict) {
+        const thing = document.getElementById("shThingSelect").value;
+        const expVer = forceStaleConflict ? 0 : parseInt(document.getElementById("shExpectedVer").value || "1", 10);
+        let desiredObj = {};
+        let reportedObj = {};
+        try {
+          desiredObj = JSON.parse(document.getElementById("shDesiredInput").value || "{}");
+          reportedObj = JSON.parse(document.getElementById("shReportedInput").value || "{}");
+        } catch (parseErr) {
+          document.getElementById("shadowBedrockOutput").textContent = "Invalid JSON in desired/reported editor: " + parseErr.message;
+          return;
+        }
+
+        const res = await apiPost("/api/shadow/update", {
+          thing_name: thing,
+          expected_version: expVer,
+          desired: desiredObj,
+          reported: reportedObj
+        });
+        const d = res.data;
+        const banner = document.getElementById("shadowBedrockBanner");
+        if (res.status === 409) {
+          banner.className = "verdict-banner verdict-deny";
+          banner.innerHTML =
+            "<div><strong>🛑 HTTP 409 VERSION CONFLICT REJECTED</strong><br/>" +
+            "<span style='font-size:0.82rem;'>" + esc(d.error) + " (0 stale overwrites permitted).</span></div>" +
+            "<span class='tag tag-fail'>409 CONFLICT</span>";
+          document.getElementById("shadowBedrockOutput").textContent = JSON.stringify(d, null, 2);
+        } else if (res.ok) {
+          document.getElementById("shExpectedVer").value = d.version;
+          document.getElementById("shadowVerTag").textContent = "v" + d.version;
+          banner.className = "verdict-banner verdict-allow";
+          banner.innerHTML =
+            "<div><strong>✅ SHADOW v" + d.version + " COMMITTED IN " + d.shadow_cas_ms + " ms</strong><br/>" +
+            "<span style='font-size:0.82rem;'>Delta keys remaining: <code>" + esc(Object.keys(d.delta || {}).join(", ") || "none (desired == reported)") + "</code></span></div>" +
+            "<span class='tag tag-pass'>" + (d.has_delta ? "DELTA ACTIVE" : "IN SYNC") + "</span>";
+          document.getElementById("shadowBedrockOutput").textContent = JSON.stringify(d, null, 2);
+          await refreshLiveState();
+        }
+      };
+
+      window.runBedrockDiagnosisLive = async function () {
+        const btn = document.getElementById("btnRunBedrock");
+        const prompt = document.getElementById("bedrockPromptInput").value.trim();
+        if (!prompt) return;
+        btn.disabled = true;
+        btn.textContent = "⏳ Querying Amazon Bedrock Nova Lite...";
+        try {
+          const res = await apiPost("/api/fleet/diagnose", { prompt: prompt });
+          const d = res.data;
+          const banner = document.getElementById("shadowBedrockBanner");
+          if (res.ok && d.diagnosis) {
+            banner.className = "verdict-banner verdict-allow";
+            banner.innerHTML =
+              "<div><strong>🤖 AMAZON BEDROCK DIAGNOSIS (" + esc(d.diagnosis.severity || "SEV-3") + " · " + esc(d.diagnosis.incident_category || "FLEET_DIAGNOSIS") + ")</strong><br/>" +
+              "<span style='font-size:0.82rem;'>" + esc(d.diagnosis.root_cause || "") + "</span></div>" +
+              "<span class='tag tag-accent'>" + d.bedrock_latency_ms + " ms · " + d.total_tokens + " tok</span>";
+            document.getElementById("bedrockMetaTag").textContent = d.model_id + " · " + d.bedrock_latency_ms + " ms";
+            document.getElementById("shadowBedrockOutput").textContent = JSON.stringify({
+              model_id: d.model_id,
+              bedrock_latency_ms: d.bedrock_latency_ms,
+              total_tokens: d.total_tokens,
+              diagnosis: d.diagnosis
+            }, null, 2);
+          } else {
+            banner.className = "verdict-banner verdict-deny";
+            banner.innerHTML = "<div><strong>⚠ BEDROCK CALL FAILED</strong><br/><span style='font-size:0.82rem;'>" + esc(d.error || "Unknown error") + "</span></div><span class='tag tag-fail'>ERROR</span>";
+          }
+        } catch (err) {
+          document.getElementById("shadowBedrockOutput").textContent = "Error: " + err.message;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "🤖 Diagnose Fleet With Amazon Bedrock";
+        }
+      };
+
+      async function refreshLiveState() {
+        try {
+          const snap = await apiGet("/api/state");
+          if (snap && Array.isArray(snap.things) && snap.things.length) state.things = snap.things;
+          if (snap && Array.isArray(snap.dynamic_groups) && snap.dynamic_groups.length) state.dynamicGroups = snap.dynamic_groups;
+          if (snap && typeof snap.crl_revoked_count === "number") state.crlRevokedCount = snap.crl_revoked_count;
+          if (snap && snap.benchmarks && snap.benchmarks.headline_kpis) {
+            MEASURED_BENCHMARKS = snap.benchmarks;
+            renderMeasuredKpisAndBenchmarks();
+          }
+        } catch (_) {}
+        renderPkiFleet();
+        renderDynamicGroupsCards();
+      }
+
+      window.resetControlPlane = async function () {
+        document.getElementById("pkiConsoleOutput").dataset.customRendered = "";
+        try {
+          await apiPost("/api/reset", {});
+        } catch (_) {}
+        await refreshLiveState();
+        syncShadowEditorFromState();
+      };
+
+      parseHashState();
+      applyTheme(activeTheme);
+      switchTab(activeTab);
+      selectArchNode("pki-jitp");
+      renderMeasuredKpisAndBenchmarks();
+      renderPkiFleet();
+      renderDynamicGroupsCards();
+      syncShadowEditorFromState();
+      document.getElementById("policyDecisionOutput").textContent = JSON.stringify({
+        allowed: true,
+        verdict: "ALLOW_THING_SCOPED",
+        matched_statement_sid: "AllowOwnShadowAndTelemetryPublish",
+        expanded_allow_resources: [
+          "arn:aws:iot:us-west-2:796330847946:topic/$aws/things/coldchain-sensor-042/shadow/update"
+        ],
+        eval_ms: MEASURED_BENCHMARKS.headline_kpis.policy_gate_p50_ms
+      }, null, 2);
+      refreshLiveState().then(function () { syncShadowEditorFromState(); });
+    })();
+  </script>
+</body>
+</html>

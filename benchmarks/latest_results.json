@@ -1,0 +1,393 @@
+{
+  "service": "iot-core-plane",
+  "benchmark_timestamp_utc": "2026-11-25T22:37:38Z",
+  "environment": {
+    "python_version": "3.14.6",
+    "platform": "Darwin 25.6.0 (arm64)",
+    "aws_region": "us-west-2",
+    "bedrock_model": "us.amazon.nova-lite-v1:0",
+    "pki_cipher_suite": "ECDSA NIST P-256 (secp256r1) + SHA-256 X.509v3 DER/PEM",
+    "storage_engine": "SQLite WAL + In-Memory Inverted Fleet Index"
+  },
+  "headline_kpis": {
+    "jitp_devices_provisioned": 1000,
+    "zero_downtime_rotations_completed": 1000,
+    "dropped_mqtt_sessions": 0,
+    "jitp_p50_ms": 0.878,
+    "jitp_p95_ms": 1.115,
+    "jitp_1000_wall_ms": 936.16,
+    "rotation_p50_ms": 3.431,
+    "rotation_p95_ms": 3.931,
+    "rotation_1000_wall_ms": 3533.41,
+    "mtls_chain_verify_p50_ms": 0.424,
+    "spoofing_attacks_total": 16,
+    "spoofing_attacks_blocked": 16,
+    "spoofing_block_rate_pct": 100.0,
+    "cross_thing_leaks": 0,
+    "policy_gate_p50_ms": 0.463,
+    "policy_gate_p95_ms": 0.529,
+    "inverted_index_reindex_p50_ms": 0.0062,
+    "inverted_index_reindex_p95_ms": 0.0072,
+    "linear_scan_1000_p50_ms": 3.686,
+    "linear_scan_1000_p95_ms": 3.982,
+    "dynamic_group_speedup_x": 594.6,
+    "shadow_cas_p50_ms": 0.019,
+    "shadow_cas_p95_ms": 0.054,
+    "stale_conflicts_injected": 70,
+    "stale_conflicts_blocked": 70,
+    "stale_conflict_detection_pct": 100.0,
+    "bedrock_scenarios_total": 8,
+    "bedrock_scenarios_passed": 8,
+    "bedrock_pass_rate_pct": 100.0,
+    "bedrock_latency_p50_ms": 2830.4,
+    "bedrock_latency_p95_ms": 4401.9,
+    "bedrock_mean_tokens": 2175.6,
+    "bedrock_total_tokens": 17405
+  },
+  "dynamic_group_summary": [
+    {
+      "group_name": "cert-rotation-due-14d",
+      "group_arn": "arn:aws:iot:us-west-2:796330847946:thinggroup/cert-rotation-due-14d",
+      "query_string": "cert_days_remaining <= 14 AND connectivity = CONNECTED",
+      "description": "Connected fleet with leaf certificate expiring in <= 14 days",
+      "indexed_fields": [
+        "cert_days_remaining",
+        "connectivity"
+      ],
+      "member_count": 200,
+      "sample_members": [
+        "thing-0000",
+        "thing-0005",
+        "thing-0010",
+        "thing-0015",
+        "thing-0020",
+        "thing-0025",
+        "thing-0030",
+        "thing-0035",
+        "thing-0040",
+        "thing-0045",
+        "thing-0050",
+        "thing-0055"
+      ]
+    },
+    {
+      "group_name": "healthy-production-v24",
+      "group_arn": "arn:aws:iot:us-west-2:796330847946:thinggroup/healthy-production-v24",
+      "query_string": "firmware_version >= 2.4.0 AND connectivity = CONNECTED",
+      "description": "Connected gateways on 2.4.0+ firmware",
+      "indexed_fields": [
+        "connectivity",
+        "firmware_version"
+      ],
+      "member_count": 640,
+      "sample_members": [
+        "thing-0001",
+        "thing-0002",
+        "thing-0004",
+        "thing-0005",
+        "thing-0007",
+        "thing-0008",
+        "thing-0010",
+        "thing-0011",
+        "thing-0013",
+        "thing-0014",
+        "thing-0016",
+        "thing-0017"
+      ]
+    },
+    {
+      "group_name": "low-battery-offline",
+      "group_arn": "arn:aws:iot:us-west-2:796330847946:thinggroup/low-battery-offline",
+      "query_string": "battery_pct < 20 AND connectivity = DISCONNECTED",
+      "description": "Disconnected sensors below 20% battery",
+      "indexed_fields": [
+        "battery_pct",
+        "connectivity"
+      ],
+      "member_count": 100,
+      "sample_members": [
+        "thing-0009",
+        "thing-0019",
+        "thing-0029",
+        "thing-0039",
+        "thing-0049",
+        "thing-0059",
+        "thing-0069",
+        "thing-0079",
+        "thing-0089",
+        "thing-0099",
+        "thing-0109",
+        "thing-0119"
+      ]
+    },
+    {
+      "group_name": "overheating-legacy-fw",
+      "group_arn": "arn:aws:iot:us-west-2:796330847946:thinggroup/overheating-legacy-fw",
+      "query_string": "firmware_version < 2.4.0 AND temp_c > 75",
+      "description": "Legacy firmware (< 2.4.0) running above 75 C",
+      "indexed_fields": [
+        "firmware_version",
+        "temp_c"
+      ],
+      "member_count": 134,
+      "sample_members": [
+        "thing-0000",
+        "thing-0006",
+        "thing-0012",
+        "thing-0018",
+        "thing-0024",
+        "thing-0030",
+        "thing-0036",
+        "thing-0042",
+        "thing-0048",
+        "thing-0054",
+        "thing-0060",
+        "thing-0066"
+      ]
+    }
+  ],
+  "adversarial_spoofing_results": [
+    {
+      "probe_id": "IOT-ATK-01",
+      "vector": "Lateral Shadow Update Spoof",
+      "action": "iot:Publish",
+      "target": "$aws/things/thing-0099/shadow/update",
+      "verdict": "IMPLICIT_DENY_CROSS_THING",
+      "reason_code": "IOT_POLICY_TOPIC_ISOLATION",
+      "eval_ms": 0.6019,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-02",
+      "vector": "Lateral Shadow Get Read",
+      "action": "iot:Publish",
+      "target": "$aws/things/thing-0099/shadow/get",
+      "verdict": "IMPLICIT_DENY_CROSS_THING",
+      "reason_code": "IOT_POLICY_TOPIC_ISOLATION",
+      "eval_ms": 0.4281,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-03",
+      "vector": "Cross-Thing Named Shadow Write",
+      "action": "iot:Publish",
+      "target": "$aws/things/thing-0500/shadow/name/ota/update",
+      "verdict": "IMPLICIT_DENY_CROSS_THING",
+      "reason_code": "IOT_POLICY_TOPIC_ISOLATION",
+      "eval_ms": 0.4478,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-04",
+      "vector": "Cross-Thing Telemetry Injection",
+      "action": "iot:Publish",
+      "target": "dt/industrial/thing-0099/sensors",
+      "verdict": "IMPLICIT_DENY_CROSS_THING",
+      "reason_code": "IOT_POLICY_TOPIC_ISOLATION",
+      "eval_ms": 0.4249,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-05",
+      "vector": "MQTT '+' Single-Level Wildcard Subscribe",
+      "action": "iot:Subscribe",
+      "target": "$aws/things/+/shadow/update/delta",
+      "verdict": "IMPLICIT_DENY_CROSS_THING",
+      "reason_code": "IOT_POLICY_TOPIC_ISOLATION",
+      "eval_ms": 0.4277,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-06",
+      "vector": "MQTT '#' Multi-Level Fleet Snooping",
+      "action": "iot:Subscribe",
+      "target": "dt/industrial/#",
+      "verdict": "IMPLICIT_DENY_CROSS_THING",
+      "reason_code": "IOT_POLICY_TOPIC_ISOLATION",
+      "eval_ms": 0.4348,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-07",
+      "vector": "MQTT '#' Root Broker Subscribe",
+      "action": "iot:Subscribe",
+      "target": "#",
+      "verdict": "IMPLICIT_DENY_CROSS_THING",
+      "reason_code": "IOT_POLICY_TOPIC_ISOLATION",
+      "eval_ms": 0.4421,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-08",
+      "vector": "MQTT Wildcard Publish Injection",
+      "action": "iot:Publish",
+      "target": "dt/industrial/+/override",
+      "verdict": "DENY_INVALID_MQTT_PUBLISH_WILDCARD",
+      "reason_code": "MQTT_PUBLISH_WILDCARD_FORBIDDEN",
+      "eval_ms": 0.0008,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-09",
+      "vector": "ClientId Spoofing on Connect",
+      "action": "iot:Connect",
+      "target": "thing-0099",
+      "verdict": "IMPLICIT_DENY_CROSS_THING",
+      "reason_code": "IOT_POLICY_TOPIC_ISOLATION",
+      "eval_ms": 0.4486,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-10",
+      "vector": "Principal-to-Thing Cert Impersonation",
+      "action": "iot:Publish",
+      "target": "$aws/things/thing-0099/shadow/update",
+      "verdict": "DENY_PRINCIPAL_THING_MISMATCH",
+      "reason_code": "IOT_CERT_THING_MISMATCH",
+      "eval_ms": 0.4132,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-11",
+      "vector": "Revoked CRL Certificate Replay",
+      "action": "iot:Publish",
+      "target": "$aws/things/thing-0000/shadow/update",
+      "verdict": "DENY_INVALID_CERTIFICATE",
+      "reason_code": "TLS_PRINCIPAL_REJECTED",
+      "eval_ms": 0.0019,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-12",
+      "vector": "Fleet Admin Broadcast Command Topic",
+      "action": "iot:Publish",
+      "target": "cmd/fleet-admin/reboot-all",
+      "verdict": "EXPLICIT_DENY",
+      "reason_code": "IOT_EXPLICIT_DENY",
+      "eval_ms": 0.4098,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-13",
+      "vector": "System $aws/events Topic Tampering",
+      "action": "iot:Subscribe",
+      "target": "$aws/events/presence/connected/+",
+      "verdict": "IMPLICIT_DENY_CROSS_THING",
+      "reason_code": "IOT_POLICY_TOPIC_ISOLATION",
+      "eval_ms": 0.4158,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-14",
+      "vector": "Cross-Thing Command Topic Receive",
+      "action": "iot:Receive",
+      "target": "cmd/industrial/thing-0099/valve",
+      "verdict": "IMPLICIT_DENY_CROSS_THING",
+      "reason_code": "IOT_POLICY_TOPIC_ISOLATION",
+      "eval_ms": 0.6381,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-15",
+      "vector": "Unauthorized Control-Plane Action (iot:AttachPolicy)",
+      "action": "iot:AttachPolicy",
+      "target": "$aws/things/thing-0042/shadow/update",
+      "verdict": "DENY_UNSUPPORTED_ACTION",
+      "reason_code": "IOT_UNSUPPORTED_ACTION",
+      "eval_ms": 0.0006,
+      "blocked": true
+    },
+    {
+      "probe_id": "IOT-ATK-16",
+      "vector": "Unscoped Root Topic Publish",
+      "action": "iot:Publish",
+      "target": "dt/global/broadcast",
+      "verdict": "IMPLICIT_DENY_CROSS_THING",
+      "reason_code": "IOT_POLICY_TOPIC_ISOLATION",
+      "eval_ms": 0.4291,
+      "blocked": true
+    }
+  ],
+  "bedrock_diagnostic_results": [
+    {
+      "scenario_id": "ESC-01",
+      "title": "Cert Expiry Wave (<= 14 Days)",
+      "severity": "SEV-3",
+      "category": "CERT_EXPIRY_WAVE",
+      "bedrock_latency_ms": 4401.91,
+      "total_tokens": 2218,
+      "uses_thing_policy_vars": true,
+      "passed": true
+    },
+    {
+      "scenario_id": "ESC-02",
+      "title": "Overheating Legacy Firmware Drift",
+      "severity": "SEV-3",
+      "category": "SHADOW_DRIFT_STORM",
+      "bedrock_latency_ms": 3126.85,
+      "total_tokens": 2212,
+      "uses_thing_policy_vars": true,
+      "passed": true
+    },
+    {
+      "scenario_id": "ESC-03",
+      "title": "Cross-Thing MQTT Topic Spoofing Alert",
+      "severity": "SEV-3",
+      "category": "LEAST_PRIVILEGE_POLICY",
+      "bedrock_latency_ms": 2830.45,
+      "total_tokens": 2145,
+      "uses_thing_policy_vars": true,
+      "passed": true
+    },
+    {
+      "scenario_id": "ESC-04",
+      "title": "Reconnect Shadow VersionConflict Storm",
+      "severity": "SEV-3",
+      "category": "SHADOW_DRIFT_STORM",
+      "bedrock_latency_ms": 2443.02,
+      "total_tokens": 2203,
+      "uses_thing_policy_vars": true,
+      "passed": true
+    },
+    {
+      "scenario_id": "ESC-05",
+      "title": "Disconnected Low-Battery Sensor Triage",
+      "severity": "SEV-3",
+      "category": "SHADOW_DRIFT_STORM",
+      "bedrock_latency_ms": 2140.1,
+      "total_tokens": 2111,
+      "uses_thing_policy_vars": true,
+      "passed": true
+    },
+    {
+      "scenario_id": "ESC-06",
+      "title": "Emergency CRL Compromised Key Revocation",
+      "severity": "SEV-3",
+      "category": "CERT_EXPIRY_WAVE",
+      "bedrock_latency_ms": 2520.14,
+      "total_tokens": 2133,
+      "uses_thing_policy_vars": true,
+      "passed": true
+    },
+    {
+      "scenario_id": "ESC-07",
+      "title": "Named Shadow OTA Rollback Plan",
+      "severity": "SEV-3",
+      "category": "SHADOW_DRIFT_STORM",
+      "bedrock_latency_ms": 3353.88,
+      "total_tokens": 2188,
+      "uses_thing_policy_vars": true,
+      "passed": true
+    },
+    {
+      "scenario_id": "ESC-08",
+      "title": "Provisioning-by-Claim Factory Bootstrap Lockdown",
+      "severity": "SEV-3",
+      "category": "SHADOW_DRIFT_STORM",
+      "bedrock_latency_ms": 2484.08,
+      "total_tokens": 2195,
+      "uses_thing_policy_vars": true,
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 730" role="img" aria-label="IoTCorePlane System Architecture Diagram">
+  <defs>
+    <pattern id="dotGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#D4D4D8" />
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="1220" height="730" fill="#FAF7F2" />
+  <rect x="0" y="0" width="1220" height="730" fill="url(#dotGrid)" opacity="0.7" />
+
+  <!-- Layer 1 -->
+  <rect x="24" y="20" width="1172" height="142" fill="#FFFFFF" stroke="#18181B" stroke-width="2" stroke-dasharray="8 5" />
+  <text x="42" y="46" font-family="sans-serif" font-size="16" font-weight="800" fill="#047857">1. Serverless Edge &amp; Device Entry (CloudFront + Private S3 OAC + Python 3.12 Lambda)</text>
+
+  <rect x="44" y="64" width="220" height="80" fill="#DBEAFE" stroke="#18181B" stroke-width="2" />
+  <text x="154" y="94" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="#18181B">Operator Browser &amp; Fleet</text>
+  <text x="154" y="116" text-anchor="middle" font-family="monospace" font-size="11" fill="#1E3A8A">X.509 mTLS + HTTPS Studio</text>
+
+  <rect x="314" y="64" width="240" height="80" fill="#D1FAE5" stroke="#18181B" stroke-width="2" />
+  <text x="434" y="94" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="#18181B">Amazon CloudFront</text>
+  <text x="434" y="116" text-anchor="middle" font-family="monospace" font-size="11" fill="#065F46">UI -&gt; S3 OAC · /api/* -&gt; Lambda</text>
+
+  <rect x="614" y="54" width="270" height="44" fill="#ECFDF5" stroke="#18181B" stroke-width="2" />
+  <text x="749" y="81" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#065F46">Private S3 Bucket (BlockPublicAccess)</text>
+
+  <rect x="614" y="106" width="270" height="44" fill="#FEF3C7" stroke="#18181B" stroke-width="2" />
+  <text x="749" y="133" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#92400E">AWS Lambda API (Python 3.12)</text>
+
+  <rect x="920" y="56" width="254" height="92" fill="#F2ECE1" stroke="#18181B" stroke-width="2" />
+  <text x="1047" y="84" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="800" fill="#047857">$0.00 Idle Architecture</text>
+  <text x="1047" y="106" text-anchor="middle" font-family="monospace" font-size="10.5" fill="#18181B">ECDSA P-256 X.509v3 Certs</text>
+  <text x="1047" y="126" text-anchor="middle" font-family="monospace" font-size="10.5" fill="#18181B">0 Standing Brokers or NATs</text>
+
+  <!-- Layer 2 -->
+  <rect x="24" y="188" width="1172" height="154" fill="#ECFDF5" stroke="#047857" stroke-width="2" stroke-dasharray="8 5" />
+  <text x="42" y="214" font-family="sans-serif" font-size="16" font-weight="800" fill="#047857">2. X.509 Identity, JITP, Overlapping Cert Rotation &amp; Thing-Scoped Policy Gate</text>
+
+  <rect x="44" y="232" width="356" height="92" fill="#FFFFFF" stroke="#18181B" stroke-width="2" />
+  <text x="222" y="260" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="#18181B">Fleet CA, JITP &amp; Claim Bootstrap</text>
+  <text x="222" y="282" text-anchor="middle" font-family="monospace" font-size="10.5" fill="#047857">pki_provisioning.py · ECDSA-P256-SHA256</text>
+  <text x="222" y="304" text-anchor="middle" font-family="monospace" font-size="10" fill="#52514E">First-connect Thing + Policy attachment</text>
+
+  <rect x="430" y="232" width="360" height="92" fill="#FEF3C7" stroke="#18181B" stroke-width="2" />
+  <text x="610" y="260" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="#92400E">Zero-Downtime Cert Rotation &amp; CRL</text>
+  <text x="610" y="282" text-anchor="middle" font-family="monospace" font-size="10.5" fill="#18181B">ACTIVE_PRIMARY + PENDING_ROTATION</text>
+  <text x="610" y="304" text-anchor="middle" font-family="monospace" font-size="10" fill="#78350F">Revokes old cert only after VERIFIED_CONNECT</text>
+
+  <rect x="820" y="232" width="354" height="92" fill="#FEE2E2" stroke="#18181B" stroke-width="2" />
+  <text x="997" y="260" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="#991B1B">Thing-Scoped MQTT Policy Gate</text>
+  <text x="997" y="282" text-anchor="middle" font-family="monospace" font-size="10.5" fill="#18181B">${iot:Connection.Thing.ThingName}</text>
+  <text x="997" y="304" text-anchor="middle" font-family="monospace" font-size="10" fill="#7F1D1D">Blocks 100% lateral shadow &amp; wildcard spoofing</text>
+
+  <!-- Layer 3 -->
+  <rect x="24" y="368" width="1172" height="154" fill="#FFFFFF" stroke="#1D4ED8" stroke-width="2" stroke-dasharray="8 5" />
+  <text x="42" y="394" font-family="sans-serif" font-size="16" font-weight="800" fill="#1D4ED8">3. Thing Registry, Inverted-Index Dynamic Thing Groups &amp; Versioned Device Shadow</text>
+
+  <rect x="44" y="412" width="546" height="92" fill="#DBEAFE" stroke="#18181B" stroke-width="2" />
+  <text x="317" y="440" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="#18181B">SQLite WAL Registry &amp; Inverted Fleet Index</text>
+  <text x="317" y="462" text-anchor="middle" font-family="monospace" font-size="10.5" fill="#1E3A8A">registry_groups.py · O(k) Dynamic Thing Group Re-Index</text>
+  <text x="317" y="484" text-anchor="middle" font-family="monospace" font-size="10" fill="#3F3F46">Evaluates firmware &lt; 2.4.0 AND temp_c &gt; 75 in microseconds</text>
+
+  <rect x="628" y="412" width="546" height="92" fill="#D1FAE5" stroke="#18181B" stroke-width="2" />
+  <text x="901" y="440" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="#18181B">Optimistic-CAS Device Shadow Reconciler</text>
+  <text x="901" y="462" text-anchor="middle" font-family="monospace" font-size="10.5" fill="#065F46">device_shadow.py · desired / reported / delta</text>
+  <text x="901" y="484" text-anchor="middle" font-family="monospace" font-size="10" fill="#3F3F46">Strict expected_version CAS rejects stale writes (409 Conflict)</text>
+
+  <!-- Layer 4 -->
+  <rect x="24" y="548" width="1172" height="154" fill="#F3E8FF" stroke="#6D28D9" stroke-width="2" stroke-dasharray="8 5" />
+  <text x="42" y="574" font-family="sans-serif" font-size="16" font-weight="800" fill="#5B21B6">4. AI Fleet Escalation &amp; Policy Copilot (Amazon Bedrock Nova Lite)</text>
+
+  <rect x="44" y="592" width="1130" height="92" fill="#FFFFFF" stroke="#18181B" stroke-width="2" />
+  <text x="609" y="622" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="800" fill="#5B21B6">Amazon Bedrock Converse API (us.amazon.nova-lite-v1:0)</text>
+  <text x="609" y="646" text-anchor="middle" font-family="monospace" font-size="11" fill="#18181B">Diagnoses cert-expiry waves, shadow drift storms, and CRL incidents; authors least-privilege IoT policies</text>
+  <text x="609" y="668" text-anchor="middle" font-family="monospace" font-size="10.5" fill="#047857">Structured JSON root-cause + remediation steps + ${iot:Connection.Thing.ThingName} policy output</text>
+</svg>

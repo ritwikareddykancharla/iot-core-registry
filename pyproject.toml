@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iot-core-plane"
+version = "1.0.0"
+description = "IoTCorePlane: X.509 Fleet Provisioning, Zero-Downtime Certificate Rotation, Thing-Scoped MQTT Policy Gate, Inverted-Index Dynamic Thing Groups, and Versioned Device Shadow Reconciler with Amazon Bedrock"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Ritwika Reddy Kancharla" }]
+dependencies = [
+    "boto3>=1.34.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["iot_core_plane*"]
